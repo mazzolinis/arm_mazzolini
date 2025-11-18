@@ -1,0 +1,65 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+
+    joint_state_broadcaster:
+        type: joint_state_broadcaster/JointStateBroadcaster
+
+    joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    diff_drive_controller:
+      type: diff_drive_controller/DiffDriveController
+
+joint_trajectory_controller:
+  ros__parameters:
+    joints:
+      - joint1
+      - joint2
+    command_interfaces:
+      - effort
+    state_interfaces:
+      - position
+      - velocity
+    gains:
+      joint1:
+        p: 60.0
+        i: 0.0
+        d: 5.0
+        ff_velocity_scale: 1.0
+      joint2:
+        p: 60.0
+        i: 0.0
+        d: 0.5
+        ff_velocity_scale: 1.0
+
+diff_drive_controller:
+  ros__parameters:
+    left_wheel_names: ["front_left_wheel_joint", "rear_left_wheel_joint"]
+    right_wheel_names: ["front_right_wheel_joint", "rear_right_wheel_joint"]
+    
+    wheel_separation: 1.0
+    wheel_separation_multiplier: 1.0
+    wheel_radius: 0.2
+    wheels_per_side: 2
+
+    cmd_vel_timeout: 0.5
+    pose_reference_frame: "odom"
+    odom_frame_id: "odom"
+    base_frame_id: "base_link"
+    enable_odom_tf: true
+
+    use_stamped_vel: false # Change when using nodes to publish messages
+    open_loop: true
+
+    pose_covariance_diagona: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+    twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+
+weeder_node:
+  ros__parameters:
+    link1_length: 0.190
+    link2_length: 0.250
+
+    base_frame_transform:
+      translation: [0.0, -0.490, 0.350] # x, y, z (meters)
+      rotation: [-90.0, 0.0, 0.0] # yaw, pitch, roll (degrees)

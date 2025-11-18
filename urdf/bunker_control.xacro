@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<robot name="weeder_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:include filename="$(find arm_mazzolini)/urdf/bunker_fake.xacro"/>
+    <xacro:bunker_fake/>
+
+    <ros2_control name="bunker_controller" type="system">
+        <hardware>
+            <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+        </hardware>
+        <xacro:wheel_control name="front_left_wheel"/>
+        <xacro:wheel_control name="rear_left_wheel"/>
+        <xacro:wheel_control name="front_right_wheel"/>
+        <xacro:wheel_control name="rear_right_wheel"/>
+    </ros2_control>
+    
+    <gazebo>
+        <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+            <robot_param>robot_description</robot_param>
+            <robot_param_node>robot_state_publisher</robot_param_node>
+            <parameters>$(find arm_mazzolini)/config/bunker_fake.yaml</parameters>
+        </plugin>
+    </gazebo>
+
+</robot>

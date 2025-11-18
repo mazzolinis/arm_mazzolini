@@ -1,0 +1,80 @@
+<?xml version="1.0"?>
+<robot name="weeder_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:property name="PI" value="3.141592" />
+
+    <!-- Parameters  -->
+    <xacro:arg name= "is_wheeled" default="false"/>
+    <xacro:arg name= "is_light" default="true"/>
+    <xacro:arg name= "controller_yaml" default=""/>
+   
+    <xacro:macro name="weeder_robot" params="is_wheeled is_light controller_yaml">
+
+        <!-- Including base and arm xacro files -->
+        <xacro:unless value="${is_wheeled}">
+            <xacro:include filename="$(find arm_mazzolini)/urdf/base.xacro"/>
+        </xacro:unless>
+        <xacro:if value="${is_wheeled}">
+            <xacro:include filename="$(find arm_mazzolini)/urdf/bunker_fake.xacro"/>
+        </xacro:if>
+
+        <xacro:include filename="$(find arm_mazzolini)/urdf/arm.xacro"/>
+        
+        <!-- Create base -->
+        <xacro:unless value="${is_wheeled}">
+            <xacro:base/>
+        </xacro:unless>
+        <xacro:if value="${is_wheeled}">
+            <xacro:bunker_fake/>
+        </xacro:if>
+
+        <!-- Create robotic arm -->
+        <xacro:arm is_light="${is_light}"/>
+
+        <!-- Create weeder robot by connecting base and arm -->
+        <!-- Fixed joint connecting base_link and arm_base_link -->
+        <joint name="base_to_arm_joint" type="fixed">
+            <xacro:unless value="${is_wheeled}">
+                <parent link="base_box"/>
+            </xacro:unless>
+            <xacro:if value="${is_wheeled}">
+                <parent link="base_link"/>
+            </xacro:if> 
+            <child link="arm_base_link"/>
+            <origin xyz="0 -0.3 0.28" rpy="0 0 -${PI/2}"/>
+        </joint>
+
+        <!-- Ros2 Control -->
+        <ros2_control name="weeder_controller" type="system">
+            <hardware>
+                <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+            </hardware>
+            <xacro:joint_control name="joint1"/>
+            <xacro:joint_control name="joint2"/>
+            <xacro:if value="${is_wheeled}">
+                <xacro:wheel_control name="front_left_wheel"/>
+                <xacro:wheel_control name="rear_left_wheel"/>
+                <xacro:wheel_control name="front_right_wheel"/>
+                <xacro:wheel_control name="rear_right_wheel"/>
+            </xacro:if>
+        </ros2_control>
+        <!-- Gazebo Plugins -->
+        <gazebo>
+            <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+                <robot_param>robot_description</robot_param>
+                <robot_param_node>robot_state_publisher</robot_param_node>
+                <parameters>$(arg controller_yaml)</parameters>
+            </plugin>
+            <!-- <sensor name="force_torque_sensor" type="force_torque"> 
+                <update_rate>10.0</update_rate>
+                <always_on>true</always_on>
+                <visualize>true</visualize>
+                <topic>force_torque_sensor</topic>
+            </sensor> -->
+        </gazebo>
+    </xacro:macro>
+
+
+    <xacro:weeder_robot is_wheeled="$(arg is_wheeled)" is_light="$(arg is_light)" controller_yaml="$(arg controller_yaml)"/>
+
+</robot>

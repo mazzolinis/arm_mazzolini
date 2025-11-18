@@ -1,0 +1,30 @@
+# --- ROS 2 build artifacts ---
+build/
+install/
+log/
+
+# --- CMake / colcon ---
+CMakeFiles/
+CMakeCache.txt
+colcon.meta
+*.o
+*.so
+*.a
+*.out
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Visual Studio Code ---
+.vscode/
+*.code-workspace
+
+# --- Editor / system files ---
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

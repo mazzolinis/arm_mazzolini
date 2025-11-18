@@ -1,0 +1,163 @@
+<?xml version="1.0"?>
+<robot name="weeder_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+
+    <!-- Parameters -->
+    <xacro:property name="PI" value="3.141592" />
+    <xacro:property name="base_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Arm_base.stl"/>
+    <xacro:property name="link1_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Braccio_intermedio.stl"/>
+    <xacro:property name="link2_heavy_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Braccio2.stl"/>
+    <xacro:property name="link2_light_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Braccio3.stl"/>
+    <xacro:property name="h0" value="0.07"/>
+    <xacro:property name="l0" value="0.190"/>
+    <xacro:property name="h1" value="0.0"/>
+    <xacro:property name="l1" value="0.190"/>
+    <xacro:property name="h2" value="-0.034"/>
+    <xacro:property name="l2" value="0.250"/> 
+    <xacro:property name="scale" value="1e-3 1e-3 1e-3"/>
+    
+    <xacro:macro name="arm" params= "is_light">
+        <!-- Base Link of robotic arm-->
+        <link name="arm_base_link">
+            <visual>
+                <geometry>
+                    <mesh filename="${base_mesh}" scale="${scale}"/>
+                </geometry>
+                <material name="grey">
+                    <color rgba="0.6 0.6 0.6 1"/>
+                </material>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${base_mesh}" scale="${scale}"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <mass value="2.074"/>
+            <inertia ixx="0.006004333"  ixy="0.000070425"   ixz="0.001686871"
+                                        iyy="0.010804985"   iyz="-0.000043204"
+                                                            izz="0.013471098"
+                />
+            </inertial>
+        </link>
+
+        <!-- Link 1, intermediate link -->
+        <link name="link1">
+            <visual>
+                <geometry>
+                    <mesh filename="${link1_mesh}" scale="${scale}"/>
+                </geometry>
+                <material name="blue">
+                    <color rgba="0.2 0.2 0.8 1"/>
+                </material>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${link1_mesh}" scale="${scale}"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <origin xyz="${l1/2} 0 ${h1/2}" rpy="0 0 0"/>
+                <mass value="0.220"/>
+            <inertia ixx="0.000162936"    ixy="-0.000002254"   ixz="0.000291499"
+                                            iyy="0.002971043"    iyz="0.0"
+                                                                izz="0.002927669"
+                />
+            </inertial>
+        </link>
+
+        <!-- Link 2 with Futonics head -->
+        <xacro:unless value="${is_light}">
+            <link name="link2_heavy">
+                <visual>
+                    <geometry>
+                        <mesh filename="${link2_heavy_mesh}" scale="${scale}"/>
+                    </geometry>
+                    <material name="green">
+                        <color rgba="0.2 0.8 0.2 1"/>
+                    </material>
+                </visual>
+                <collision>
+                    <geometry>
+                        <mesh filename="${link2_heavy_mesh}" scale="${scale}"/>
+                    </geometry>
+                </collision>
+                <inertial>
+                    <origin xyz="${l2/2} 0 ${h2/2}"  rpy="0 0 0"/>
+                    <mass value="1.701"/>
+                    <inertia ixx="0.011472444"   ixy="0.0"           ixz="-0.024108120"
+                                                iyy="0.104552446"   iyz="0.0"
+                                                                    izz="0.094998962"
+                    />
+                </inertial>
+            </link>
+        </xacro:unless>
+
+
+        <!-- Link 2 with IPG head -->
+        <xacro:if value="${is_light}">
+            <link name="link2_light">
+                <visual>
+                    <geometry>
+                        <mesh filename="${link2_light_mesh}" scale="${scale}"/>
+                    </geometry>
+                    <material name="green">
+                        <color rgba="0.2 0.8 0.2 1"/>
+                    </material>
+                </visual>
+                <collision>
+                    <geometry>
+                        <mesh filename="${link2_light_mesh}" scale="${scale}"/>
+                    </geometry>
+                </collision>
+                <inertial>
+                    <origin xyz="${l2/2} 0 ${h2/2}" rpy="0 0 0"/>
+                    <mass value="1.701"/>
+                    <inertia ixx="0.00490436"   ixy="0.0"           ixz="-0.001747695"
+                                                iyy="0.013178423"    iyz="0.0"
+                                                                    izz="0.012756684"
+                    />
+                    </inertial>
+            </link>
+        </xacro:if>
+
+        <!-- Joint 1 (Revolute) -->
+        <joint name="joint1" type="revolute">
+            <parent link="arm_base_link"/>
+            <child link="link1"/>
+            <origin xyz="${l0} 0 ${h0}" rpy="0 0 0"/>
+            <!-- <origin xyz="0 0 ${h0}" rpy="0 0 0"/> -->
+            <axis xyz="0 0 1"/>
+            <limit effort="10" lower="-${PI}" upper="${PI}" velocity="1000"/>
+        </joint>
+
+        <!-- Joint 2 (Revolute) -->
+        <joint name="joint2" type="revolute">
+            <parent link="link1"/>
+            <xacro:unless value="${is_light}">
+                <child link="link2_heavy"/>
+            </xacro:unless>
+            <xacro:if value="${is_light}">
+                <child link="link2_light"/>
+            </xacro:if>
+            <origin xyz="${l1} 0 ${h1}" rpy="0 0 0"/>
+            <axis xyz="0 0 1"/>
+            <limit effort="10" lower="-${PI}" upper="${PI}" velocity="1000"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:macro name="joint_control" params="name">
+        <joint name="${name}">
+            <command_interface name="effort">
+                <param name="min">-1000</param>
+                <param name="max">1000</param>
+            </command_interface>
+            <state_interface name="position">
+                <param name="initial_value">0.0</param>
+            </state_interface>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+    </xacro:macro>
+</robot>

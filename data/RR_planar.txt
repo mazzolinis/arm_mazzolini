@@ -1,0 +1,48 @@
+Simbolico
+In[1]:= rotDH[\[Theta]_,d_,\[Alpha]_,a_]:={
+{Cos[\[Theta]],-Cos[\[Alpha]] Sin[\[Theta]], Sin[\[Alpha]]Sin[\[Theta]],a Cos[\[Theta]]},
+{Sin[\[Theta]],Cos[\[Alpha]]Cos[\[Theta]],-Sin[\[Alpha]]Cos[\[Theta]],a Sin[\[Theta]]},
+{0,Sin[\[Alpha]],Cos[\[Alpha]],d},
+{0,0,0,1}}
+rotDH[\[Theta],d,\[Alpha],a]//MatrixForm
+Out[2]//MatrixForm= (Cos[\[Theta]]	-Cos[\[Alpha]] Sin[\[Theta]]	Sin[\[Alpha]] Sin[\[Theta]]	a Cos[\[Theta]]
+Sin[\[Theta]]	Cos[\[Alpha]] Cos[\[Theta]]	-Cos[\[Theta]] Sin[\[Alpha]]	a Sin[\[Theta]]
+0	Sin[\[Alpha]]	Cos[\[Alpha]]	d
+0	0	0	1
+
+)
+In[3]:= s0=FullSimplify[rotDH[0,h0,0,l0]];
+s1=FullSimplify[s0.rotDH[q1,h1,0,l1]];
+s2=FullSimplify[s1.rotDH[q2,h2,0,l2]];
+In[6]:= s2//MatrixForm
+Out[6]//MatrixForm= (Cos[q1+q2]	-Sin[q1+q2]	0	l0+l1 Cos[q1]+l2 Cos[q1+q2]
+Sin[q1+q2]	Cos[q1+q2]	0	l1 Sin[q1]+l2 Sin[q1+q2]
+0	0	1	h0+h1+h2
+0	0	0	1
+
+)
+In[7]:= FullSimplify[Expand[(s2[[1,4]]-l0)^2+s2[[2,4]]^2]]
+Out[7]= l1^2+l2^2+2 l1 l2 Cos[q2]
+In[8]:= p=s2[[1;;3,4]];
+jp=FullSimplify[Expand[D[p,{{q1,q2}}]]];
+MatrixForm[jp]
+Out[10]//MatrixForm= (-l1 Sin[q1]-l2 Sin[q1+q2]	-l2 Sin[q1+q2]
+l1 Cos[q1]+l2 Cos[q1+q2]	l2 Cos[q1+q2]
+0	0
+
+)
+Numerico
+Misure (mm)
+In[11]:= h0=55;
+l0=190;
+h1=50;
+l1=190;
+l2=250;
+h2=-34;
+In[17]:= s2//MatrixForm
+Out[17]//MatrixForm= (Cos[q1+q2]	-Sin[q1+q2]	0	190+190 Cos[q1]+250 Cos[q1+q2]
+Sin[q1+q2]	Cos[q1+q2]	0	190 Sin[q1]+250 Sin[q1+q2]
+0	0	1	71
+0	0	0	1
+
+)

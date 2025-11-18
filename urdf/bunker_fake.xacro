@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot  name="weeder_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro name="bunker_fake">
+        
+        <xacro:property name="PI" value="3.141592" />
+        <!-- <xacro:property name="mesh_path" value="file://$(find arm_mazzolini)/meshes/bunker"/> -->
+        <xacro:property name="base_mass" value="180"/>
+        <xacro:property name="wheel_mass" value="5"/>
+        <xacro:property name="wheel_radius" value="0.2"/>
+        <xacro:property name="wheel_length" value="0.15"/>
+        <xacro:property name="wheel_pos_x" value="0.45"/>
+        <xacro:property name="wheel_pos_y" value="0.5"/>
+
+        <link
+            name="inertial">
+            <inertial>
+            <origin
+                xyz="0.0 0.0 0.0"
+                rpy="0 0 0" />
+            <mass
+                value="${base_mass}" />
+            <inertia
+                ixx="15.7"
+                ixy="0.0"
+                ixz="0.0"
+                iyy="26.0"
+                iyz="0.0"
+                izz="33.42" />
+            </inertial>
+            <visual>
+            <origin
+                xyz="0.0 0.0 0.0"
+                rpy="0 0 0" />
+            <geometry>
+                <box size="1.08 0.785 0.47" />
+            </geometry>
+            <material
+                name="">
+                <color
+                rgba="0.5 0.5 0.5 1" />
+            </material>
+            </visual>
+            <collision>
+            <origin
+                xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <geometry>
+                <box size="1.08 0.785 0.47" />
+            </geometry>
+            </collision>
+        </link>
+
+        <link name="base_link">
+        </link>
+
+        <joint
+            name="just_for_inertia"
+            type="fixed">
+            <parent
+                link="base_link" />
+            <child
+                link="inertial" />
+            <origin
+                xyz="0 0 0"
+                rpy="0 0 0" />
+        </joint>
+        
+        <xacro:macro name="bunker_wheel" params="name pos_x pos_y">
+            <link 
+                name="${name}">
+                <inertial>
+                <origin
+                    xyz="0.0 0.0 0.0"
+                    rpy="0 ${PI/2} 0" />
+                <mass
+                    value="${wheel_mass}" />
+                <inertia
+                    ixx="${wheel_mass*(wheel_radius*wheel_radius/4 + wheel_length*wheel_length/12)}"
+                    ixy="0.0"
+                    ixz="0.0"
+                    iyy="${wheel_mass*(wheel_radius*wheel_radius/4 + wheel_length*wheel_length/12)}"
+                    iyz="0.0"
+                    izz="${wheel_mass*wheel_radius*wheel_radius/2}" />
+                </inertial>
+                <visual>
+                <origin
+                    xyz="0.0 0.0 0.0"
+                    rpy="${PI/2} 0 0" />
+                <geometry>
+                    <cylinder
+                    radius="${wheel_radius}"
+                    length="${wheel_length}" />
+                </geometry>
+                <material
+                    name="">
+                    <color
+                    rgba="0.5 0.5 0.5 1" />
+                </material>
+                </visual>
+                <collision>
+                <origin
+                    xyz="0.0 0.0 0.0" 
+                    rpy="${PI/2} 0 0" />
+                <geometry>
+                    <cylinder
+                    radius="${wheel_radius}"
+                    length="${wheel_length}" />
+                </geometry>
+                </collision>
+            </link>
+
+            <joint name="${name}_joint" type="continuous">
+                <parent
+                    link="base_link" />
+                <child
+                    link="${name}" />
+                <origin
+                    xyz="${pos_x} ${pos_y} -0.12"
+                    rpy="0 0 0" />
+                <axis
+                    xyz="0 1 0" />
+            </joint>
+
+            <!-- <gazebo reference="${name}">
+                <mu1>1.0</mu1>
+                <mu2>1.0</mu2>
+            </gazebo> -->
+           
+        </xacro:macro>
+
+        <xacro:bunker_wheel name="front_left_wheel" pos_x="${wheel_pos_x}" pos_y="${wheel_pos_y}"/>
+        <xacro:bunker_wheel name="rear_left_wheel" pos_x="-${wheel_pos_x}" pos_y="${wheel_pos_y}"/>
+        <xacro:bunker_wheel name="front_right_wheel" pos_x="${wheel_pos_x}" pos_y="-${wheel_pos_y}"/>
+        <xacro:bunker_wheel name="rear_right_wheel" pos_x="-${wheel_pos_x}" pos_y="-${wheel_pos_y}"/>
+    </xacro:macro>
+
+    <xacro:macro name="wheel_control" params="name">
+        <joint name="${name}_joint">
+            <command_interface name="velocity">
+                <param name="min">-100</param>
+                <param name="max">100</param>
+            </command_interface>
+            <state_interface name="position">
+                <param name="initial_value">0.0</param>
+            </state_interface>
+            <state_interface name="velocity"/>
+        </joint>
+    </xacro:macro>
+
+</robot>

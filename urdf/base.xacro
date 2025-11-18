@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<robot name="weeder_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- Parameters -->
+    <!-- <xacro:property name="base_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Base.stl"/> -->
+
+    <xacro:macro name="base" params="">
+        <!-- Base robot, just a box -->
+        <link name="base_box">
+            <visual>
+                <geometry>
+                    <box size="1.08 0.785 0.47"/>
+                </geometry>
+                <material name="grey">
+                    <color rgba="0.6 0.6 0.6 1"/>
+                </material>
+            </visual>
+            <collision>
+                <geometry>
+                    <box size="1.08 0.785 0.47"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <origin xyz="0 0 0.0" rpy="0 0 0"/>
+                <mass value="20.0"/>
+            <inertia ixx="0.16666667"    ixy="0.0"           ixz="0.0"
+                                            iyy="0.43333333"    iyz="0.0"
+                                                                izz="0.56666667"
+                />
+            </inertial>
+        </link>
+    </xacro:macro>
+</robot>
