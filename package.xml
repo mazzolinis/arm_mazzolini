@@ -15,10 +15,10 @@
   <depend>sensor_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>trajectory_msgs</depend>
-  <!-- <depend>ros_gz</depend> -->
-  <depend>ros_gz_bridge</depend>
-  <depend>ros_gz_sim</depend>
-  <depend>ros_gz_image</depend>
+  <depend>ros_gz</depend>
+  <depend>gazebo_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
 
   <exec_depend>xacro</exec_depend>
 

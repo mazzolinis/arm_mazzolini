@@ -19,7 +19,9 @@
 #include <vector>
 #include <string>
 
-namespace arm_mazzolini
+namespace arm_mazzolini 
+// in this namespace I will add every node actually used in definitive version
+// nodes without this namespace are demos or test nodes
 {
 class WeederNode : public rclcpp::Node
 {

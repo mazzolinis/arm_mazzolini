@@ -23,13 +23,17 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(ros_gz REQUIRED)
-find_package(ros_gz_bridge REQUIRED)
+find_package(gazebo_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 # ==============================================================================
 #                                   ADD NODE                                   
 # ==============================================================================
 
 add_executable(kinematic_node src/node.cpp)
+add_executable(gazebo_target_visualizer src/gazebo_target_visualizer.cpp)
+add_executable(rviz_target_visualizer src/rviz_target_visualizer.cpp)
 
 set(PROJECT_DEPENDENCIES
   rclcpp
@@ -39,11 +43,21 @@ set(PROJECT_DEPENDENCIES
   geometry_msgs
   trajectory_msgs
   ros_gz
-  ros_gz_bridge
+  gazebo_msgs
+  std_msgs
+  visualization_msgs
 )
 
 ament_target_dependencies(
   kinematic_node PUBLIC
+  ${PROJECT_DEPENDENCIES}
+)
+ament_target_dependencies(
+  gazebo_target_visualizer PUBLIC
+  ${PROJECT_DEPENDENCIES}
+)
+ament_target_dependencies(
+  rviz_target_visualizer PUBLIC
   ${PROJECT_DEPENDENCIES}
 )
 
