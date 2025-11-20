@@ -4,12 +4,14 @@ using namespace arm_mazzolini;
 
 WeederNode::WeederNode() : Node("weeder_node")
 {
+    // Parameters
     declare_parameters();
     l1 = this->get_parameter("link1_length").as_double();
     l2 = this->get_parameter("link2_length").as_double();
     const auto translation = this->get_parameter("base_frame_transform.translation").as_double_array();
     const auto rotation = this->get_parameter("base_frame_transform.rotation").as_double_array();
 
+    // pose initialization
     Eigen::Vector3d t(translation[0], translation[1], translation[2]);
     Eigen::Matrix3d R = 
         Eigen::AngleAxisd(rotation[0] *M_PI/180.0, Eigen::Vector3d::UnitZ()) *
@@ -20,17 +22,17 @@ WeederNode::WeederNode() : Node("weeder_node")
     relative_pose.translation() = t;
     arm_pose = relative_pose; // need to initialize pose
     
+    // Subscribers
     target_sub = this->create_subscription<geometry_msgs::msg::PointStamped>(
         "/target_position", 10,
         std::bind(&WeederNode::target_callback, this, std::placeholders::_1)
     );
 
-    target_status = TargetStatus::NO_TARGET;
-
     tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
     timer = this->create_wall_timer(std::chrono::milliseconds(callback_period_ms), std::bind(&WeederNode::timer_callback, this));
 
+    // Publishers and Action Clients
     joints_client = rclcpp_action::create_client<control_msgs::action::FollowJointTrajectory>(
         this,
         "/joint_trajectory_controller/follow_joint_trajectory"
@@ -43,6 +45,10 @@ WeederNode::WeederNode() : Node("weeder_node")
     goal_options.result_callback = std::bind(&WeederNode::result_callback, this, std::placeholders::_1);
     goal_msg.trajectory.joint_names = joint_names;
 
+    laser_pub = this->create_publisher<std_msgs::msg::Bool>("/laser_command", 10);
+
+    // Initial status
+    target_status = TargetStatus::NO_TARGET;
 }
 
 void WeederNode::declare_parameters()
@@ -76,13 +82,13 @@ void WeederNode::timer_callback()
 
 void WeederNode::pose_callback(const geometry_msgs::msg::TranformStamped::SharedPtr msg)
 {
-    // ------------------- QUI DEVO DECIDERE COSA FARE DELL'HEADER ----------------------
+    // ------------------- TODO: What do I do of header? ----------------------
 
-    Eigen::Isometry3d wheeled_robot_pose = tf2::transformToEigen(&msg);
+    Eigen::Isometry3d wheeled_robot_pose = tf2::transformToEigen(&msg); // convertion out of switch case because i could change message type
 
     switch (target_status) {
         case TargetStatus::NO_TARGET:
-            // QUI: COSA FACCIO SE NON HO UN TARGET?
+            // TODO: maybe do something if I don't have a target?
             break;
 
         case TargetStatus::HAS_TARGET:
@@ -94,7 +100,7 @@ void WeederNode::pose_callback(const geometry_msgs::msg::TranformStamped::Shared
                 RCLCPP_INFO(this->get_logger(), "Get closer, target out of reach.");
                 return;
             }
-            else if (relative_position.x() < 0) { // QUI: DEFINIRE E GESTIRE LE ZONE DI ESCLUSIONE
+            else if (relative_position.x() < 0) { // TODO: define exclusion zones
                 RCLCPP_INFO(this->get_logger(), "Target behind the robot, cannot reach.");
                 return;
             }
@@ -122,10 +128,10 @@ void WeederNode::pose_callback(const geometry_msgs::msg::TranformStamped::Shared
             break;
 
         case TargetStatus::LASERING:
-            break; // QUI: CASO DELICATO, COSA SI FA?
+            break; // TODO: what happens here? It's critical
     }
 
-    // QUI: CONTROLLARE CHE LA CALLBACK SIA COMPLETA
+    // TODO: check callback completeness
 }
 
 
@@ -193,11 +199,11 @@ void WeederNode::result_callback(const rclcpp_action::ClientGoalHandle<control_m
         case rclcpp_action::ResultCode::SUCCEEDED:
             RCLCPP_INFO(this->get_logger(), "BYE BYE PLANT!");
             target_status = TargetStatus::LASERING;
-            laser_pub->publish(true); // QUI: TROPPO BREVE?
+            laser_pub->publish(true); // TODO: check what to do in LASERING status
             target_status = TargetStatus::NO_TARGET;
             break;
 
-            // QUI: GESTIRE GLI ALTRI CASI
+            // TODO: handle other cases
         case rclcpp_action::ResultCode::ABORTED:
             RCLCPP_ERROR(this->get_logger(), "Joint trajectory execution aborted.");
             return;

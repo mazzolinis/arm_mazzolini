@@ -7,6 +7,10 @@
 
 #include <trajectory_msgs/msg/joint_trajectory.hpp>
 #include <control_msgs/action/follow_joint_trajectory.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <std_msgs/msg/bool.hpp>
+
 #include <tf2_eigen/tf2_eigen.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
@@ -56,7 +60,7 @@ private:
     // Subscriptions and publishers
     rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr target_sub;
     rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr joints_client;
-    rclcpp::Publisher<bool>::SharedPtr laser_pub;
+    rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr laser_pub;
     
     std::unique_ptr<tf2_ros::Buffer> tf_buffer;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener;
