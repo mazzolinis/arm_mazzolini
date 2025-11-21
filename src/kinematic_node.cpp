@@ -30,7 +30,7 @@ WeederNode::WeederNode() : Node("weeder_node")
 
     tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
-    timer = this->create_wall_timer(std::chrono::milliseconds(callback_period_ms), std::bind(&WeederNode::timer_callback, this));
+    timer = this->create_timer(std::chrono::milliseconds(callback_period_ms), std::bind(&WeederNode::timer_callback, this));
 
     // Publishers and Action Clients
     joints_client = rclcpp_action::create_client<control_msgs::action::FollowJointTrajectory>(
