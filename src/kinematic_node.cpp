@@ -13,10 +13,11 @@ WeederNode::WeederNode() : Node("weeder_node")
 
     // pose initialization
     Eigen::Vector3d t(translation[0], translation[1], translation[2]);
-    Eigen::Matrix3d R = 
+    Eigen::Matrix3d R = (
         Eigen::AngleAxisd(rotation[0] *M_PI/180.0, Eigen::Vector3d::UnitZ()) *
         Eigen::AngleAxisd(rotation[1] *M_PI/180.0, Eigen::Vector3d::UnitY()) *
-        Eigen::AngleAxisd(rotation[2] *M_PI/180.0, Eigen::Vector3d::UnitX());
+        Eigen::AngleAxisd(rotation[2] *M_PI/180.0, Eigen::Vector3d::UnitX())
+    ).toRotationMatrix();
     
     relative_pose.linear() = R;
     relative_pose.translation() = t;
@@ -30,14 +31,19 @@ WeederNode::WeederNode() : Node("weeder_node")
 
     tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
-    timer = this->create_timer(std::chrono::milliseconds(callback_period_ms), std::bind(&WeederNode::timer_callback, this));
+    timer = rclcpp::create_timer(
+        this,
+        this->get_clock(),
+        rclcpp::Duration(std::chrono::milliseconds(callback_period_ms)), 
+        std::bind(&WeederNode::timer_callback, this)
+    );
 
     // Publishers and Action Clients
     joints_client = rclcpp_action::create_client<control_msgs::action::FollowJointTrajectory>(
         this,
         "/joint_trajectory_controller/follow_joint_trajectory"
     );
-    if (action_client->wait_for_action_server(std::chrono::seconds(10)) == false) {
+    if (joints_client->wait_for_action_server(std::chrono::seconds(10)) == false) {
         RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
         RCLCPP_INFO(this->get_logger(), "Shutting down...");
         rclcpp::shutdown();
@@ -72,19 +78,19 @@ void WeederNode::timer_callback()
         geometry_msgs::msg::TransformStamped pose_message = 
         tf_buffer->lookupTransform("odom", "base_link", tf2::TimePointZero);
 
-        pose_callback(&pose_message);
+        pose_callback(pose_message);
     }
     catch (tf2::TransformException &ex) {
-        RCLCPP_WARN(this->get_logger(); "Could not transform odom to base_link: %s", ex.what());
+        RCLCPP_WARN(this->get_logger(), "Could not transform odom to base_link: %s", ex.what());
         return;
     }
 }
 
-void WeederNode::pose_callback(const geometry_msgs::msg::TranformStamped::SharedPtr msg)
+void WeederNode::pose_callback(const geometry_msgs::msg::TransformStamped msg)
 {
     // ------------------- TODO: What do I do of header? ----------------------
 
-    Eigen::Isometry3d wheeled_robot_pose = tf2::transformToEigen(&msg); // convertion out of switch case because i could change message type
+    Eigen::Isometry3d wheeled_robot_pose = tf2::transformToEigen(msg); // convertion out of switch case because i could change message type
 
     switch (target_status) {
         case TargetStatus::NO_TARGET:
@@ -92,6 +98,7 @@ void WeederNode::pose_callback(const geometry_msgs::msg::TranformStamped::Shared
             break;
 
         case TargetStatus::HAS_TARGET:
+        {
             new_pose = wheeled_robot_pose * relative_pose;
             Eigen::Vector3d relative_position = new_pose.inverse() * target_position;
             double r = std::sqrt(relative_position.x()*relative_position.x() + relative_position.y()*relative_position.y());
@@ -116,16 +123,19 @@ void WeederNode::pose_callback(const geometry_msgs::msg::TranformStamped::Shared
                 }
             }
             break;
+        }
             
         case TargetStatus::ARM_MOVING:
+        {
             new_pose = wheeled_robot_pose * relative_pose;
             if (!new_pose.isApprox(arm_pose, pose_threshold)) {
                 RCLCPP_INFO(this->get_logger(), "STOP!!!");
-                joint_client->async_cancel_all_goals();
+                joints_client->async_cancel_all_goals();
                 target_status = TargetStatus::HAS_TARGET;
                 arm_pose = new_pose;
             }
             break;
+        }
 
         case TargetStatus::LASERING:
             break; // TODO: what happens here? It's critical
@@ -177,7 +187,7 @@ double WeederNode::normalize_angle(double angle)
 
 void WeederNode::target_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
 {
-    target_position = tf2::fromMsg(msg->point);
+    tf2::fromMsg(msg->point, target_position);
     target_status = TargetStatus::HAS_TARGET;
 }
 
@@ -197,12 +207,16 @@ void WeederNode::result_callback(const rclcpp_action::ClientGoalHandle<control_m
 {
     switch (result.code) {
         case rclcpp_action::ResultCode::SUCCEEDED:
+        {
             RCLCPP_INFO(this->get_logger(), "BYE BYE PLANT!");
-            target_status = TargetStatus::LASERING;
-            laser_pub->publish(true); // TODO: check what to do in LASERING status
-            target_status = TargetStatus::NO_TARGET;
-            break;
 
+            target_status = TargetStatus::LASERING; // TODO: check what to do in LASERING status
+            std_msgs::msg::Bool bool_msg;
+            bool_msg.data = true;
+            laser_pub->publish(bool_msg);
+            target_status = TargetStatus::NO_TARGET;
+            return;
+        }
             // TODO: handle other cases
         case rclcpp_action::ResultCode::ABORTED:
             RCLCPP_ERROR(this->get_logger(), "Joint trajectory execution aborted.");

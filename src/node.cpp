@@ -9,7 +9,12 @@ WeederNode::WeederNode(const rclcpp::NodeOptions & options) : Node("weeder_robot
 {
   publisher_ = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/joint_trajectory_controller/joint_trajectory", 10);
 
-  timer_ = this->create_timer(std::chrono::seconds(4), std::bind(&WeederNode::publish_trajectory, this));
+  timer_ = rclcpp::create_timer(
+    this, 
+    this->get_clock(),
+    rclcpp::Duration(std::chrono::seconds(4)), 
+    std::bind(&WeederNode::publish_trajectory, this)
+  );
 
   RCLCPP_INFO(this->get_logger(), "Weeder node started!");
 }

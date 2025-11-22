@@ -43,4 +43,4 @@ class TargetSpawner : public rclcpp::Node
         std::uniform_real_distribution<double> dist_rand;
         std::uniform_real_distribution<double> angle_rand;
         
-}
+};

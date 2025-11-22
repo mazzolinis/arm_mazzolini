@@ -37,7 +37,7 @@ find_package(tf2_eigen)
 add_executable(kinematic_node src/kinematic_node.cpp)
 add_executable(gazebo_target_visualizer src/gazebo_target_visualizer.cpp)
 add_executable(rviz_target_visualizer src/rviz_target_visualizer.cpp)
-add_executable(target_spwner src/target_spawner.cpp)
+add_executable(target_spawner src/target_spawner.cpp)
 
 set(PROJECT_DEPENDENCIES
   rclcpp
@@ -68,7 +68,7 @@ ament_target_dependencies(
   ${PROJECT_DEPENDENCIES}
 )
 ament_target_dependencies(
-  target_spwner PUBLIC
+  target_spawner PUBLIC
   ${PROJECT_DEPENDENCIES}
 )
 
@@ -84,7 +84,7 @@ target_include_directories(rviz_target_visualizer PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-target_include_directories(target_spwner PUBLIC
+target_include_directories(target_spawner PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
@@ -108,7 +108,7 @@ install(TARGETS gazebo_target_visualizer
 install(TARGETS rviz_target_visualizer
   DESTINATION lib/${PROJECT_NAME}
 )
-install(TARGETS target_spwner
+install(TARGETS target_spawner
   DESTINATION lib/${PROJECT_NAME}
 )
 # ============================================================================== #

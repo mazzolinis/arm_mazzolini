@@ -47,7 +47,7 @@ private:
     // target and robot pose
     Eigen::Vector3d target_position;
     Eigen::Isometry3d relative_pose; // from wheeled robot center to manipulator first joint
-    Eigen::Isometry3d new_arm_pose;
+    Eigen::Isometry3d new_pose;
     Eigen::Isometry3d arm_pose; // pose of first joint relative to map frame
 
     const double pose_threshold = 1e-3;   
@@ -71,7 +71,7 @@ private:
     // Callbacks
     void timer_callback();
     void target_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg);
-    void pose_callback(const geometry_msgs::msg::TransformStamped::SharedPtr msg);
+    void pose_callback(const geometry_msgs::msg::TransformStamped msg);
     void result_callback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult & result);
     
     // Functions
