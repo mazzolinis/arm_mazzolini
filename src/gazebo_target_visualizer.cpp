@@ -71,3 +71,12 @@ void GazeboTargetVisualizer::delete_current_target()
         current_target_name_.clear();
     }
 }
+
+int main(int argc, char **argv)
+{
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<GazeboTargetVisualizer>();
+    rclcpp::spin(node);
+    rclcpp::shutdown();
+    return 0;
+}

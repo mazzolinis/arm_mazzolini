@@ -26,6 +26,9 @@ find_package(ros_gz REQUIRED)
 find_package(gazebo_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(tf2)
+find_package(tf2_ros)
+find_package(tf2_eigen)
 
 # ==============================================================================
 #                                   ADD NODE                                   
@@ -38,7 +41,7 @@ add_executable(target_spwner src/target_spawner.cpp)
 
 set(PROJECT_DEPENDENCIES
   rclcpp
-  rclcpp_actiion
+  rclcpp_action
   control_msgs
   sensor_msgs
   geometry_msgs
@@ -47,6 +50,9 @@ set(PROJECT_DEPENDENCIES
   gazebo_msgs
   std_msgs
   visualization_msgs
+  tf2
+  tf2_ros
+  tf2_eigen
 )
 
 ament_target_dependencies(
