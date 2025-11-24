@@ -4,6 +4,8 @@ using namespace arm_mazzolini;
 
 WeederNode::WeederNode() : Node("weeder_node")
 {
+    RCLCPP_INFO(this->get_logger(), "1. QUI CI ARRIVA");
+
     // Parameters
     declare_parameters();
     l1 = this->get_parameter("link1_length").as_double();
@@ -55,6 +57,8 @@ WeederNode::WeederNode() : Node("weeder_node")
 
     // Initial status
     target_status = TargetStatus::NO_TARGET;
+
+    RCLCPP_INFO(this->get_logger(), "2. QUI CI ARRIVA");
 }
 
 void WeederNode::declare_parameters()

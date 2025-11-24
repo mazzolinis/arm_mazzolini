@@ -23,7 +23,7 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            "use_gui",
+            "use_gui", # TODO: remove this argument, simulation can't use joint_trajectory_gui anymore
             default_value="false",
             description="Enable gazebo GUI if true",
         )
@@ -37,8 +37,8 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            "is_wheeled",
-            default_value="false",
+            "is_wheeled", # TODO: remove this argument too
+            default_value="true",
             description="Set true when you'll have wheeled robot defined",
         )
     )
@@ -155,7 +155,7 @@ def generate_launch_description():
     nodes.append(robot_state_publisher)
 
     rviz_config_file = PathJoinSubstitution(
-        [FindPackageShare("arm_mazzolini"), "rviz", "first_config.rviz"]
+        [FindPackageShare("arm_mazzolini"), "rviz", "second_config.rviz"]
     )
     rviz_node = Node(
         package="rviz2",
@@ -204,17 +204,6 @@ def generate_launch_description():
     )
     nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity,on_exit=[TimerAction(period=10.0, actions=[diff_drive_controller])])))
 
-    trajectory_node = Node(
-        package = "arm_mazzolini",
-        executable = "arm_mazzolini_node",
-        name = "arm_mazzolini_node",
-        parameters=[{"use_sim_time": use_sim_time}],
-        output = "screen",
-        condition = UnlessCondition(use_gui)
-    )
-    # nodes.append(RegisterEventHandler(OnProcessStart(target_action = joint_trajectory_controller, on_start = [trajectory_node])))
-    nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[trajectory_node])])))
-
     clock_bridge=Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -223,5 +212,45 @@ def generate_launch_description():
         output='screen'
     )
     nodes.append(clock_bridge)
+
+    kinematic_node = Node(
+        package = "arm_mazzolini",
+        executable = "kinematic_node",
+        name = "kinematic_node",
+        parameters = [{"use_sim_time":use_sim_time}, controller_config_file],
+        output = "screen",
+        condition = UnlessCondition(use_gui)
+    )
+    nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=15.0, actions=[kinematic_node])])))
+
+    target_spawner = Node(
+        package = "arm_mazzolini",
+        executable = "target_spawner",
+        name = "target_spawner",
+        parameters = [{"use_sim_time":use_sim_time}],
+        output = "screen",
+        condition = UnlessCondition(use_gui)
+    )
+    nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[target_spawner])])))
+
+    gazebo_target_visualizer = Node(
+        package = "arm_mazzolini",
+        executable = "gazebo_target_visualizer",
+        name = "gazebo_target_visualizer",
+        parameters = [{"use_sim_time":use_sim_time}],
+        output = "screen",
+        condition = UnlessCondition(use_gui)
+    )
+    nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[gazebo_target_visualizer])])))
+
+    rviz_target_visualizer = Node(
+        package = "arm_mazzolini",
+        executable = "rviz_target_visualizer",
+        name = "rviz_target_visualizer",
+        parameters = [{"use_sim_time":use_sim_time}],
+        output = "screen",
+        condition = IfCondition(use_rviz)
+    )
+    nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[rviz_target_visualizer])])))
 
     return LaunchDescription(declared_arguments + [gz_launch] + nodes)

@@ -18,7 +18,6 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
         rclcpp::Duration(std::chrono::seconds(spawn_period)), 
         std::bind(&TargetSpawner::timer_callback, this)
     );
-
     // Following function only if the previous one doesn't work
     // timer = rclcpp::create_timer(
     //     this->get_node_base_interface(),
@@ -47,10 +46,11 @@ void TargetSpawner::timer_callback()
     // Get robot pose
     geometry_msgs::msg::TransformStamped transformStamped;
     try {
-        transformStamped = tf_buffer->lookupTransform("map", "base_link", tf2::TimePointZero);
+        transformStamped = tf_buffer->lookupTransform("odom", "base_link", tf2::TimePointZero);
     }
+    // TODO: change link names into variables, hard coded names are not good
     catch (tf2::TransformException &ex) {
-        RCLCPP_WARN(this->get_logger(), "Could not transform base_link to map: %s", ex.what());
+        RCLCPP_WARN(this->get_logger(), "Could not transform base_link to odom: %s", ex.what());
         return;
     }
 
@@ -67,7 +67,7 @@ void TargetSpawner::timer_callback()
     // Publish target
     geometry_msgs::msg::PointStamped target_msg;
     target_msg.header.stamp = this->now();
-    target_msg.header.frame_id = "map";
+    target_msg.header.frame_id = "odom";
     target_msg.point.x = target_position.x();
     target_msg.point.y = target_position.y();
     target_msg.point.z = target_position.z();

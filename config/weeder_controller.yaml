@@ -55,7 +55,7 @@ diff_drive_controller:
     pose_covariance_diagona: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
     twist_covariance_diagonal: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
 
-weeder_node:
+kinematic_node:
   ros__parameters:
     link1_length: 0.190
     link2_length: 0.250
