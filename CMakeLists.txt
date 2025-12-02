@@ -23,6 +23,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(trajectory_msgs REQUIRED)
 find_package(ros_gz REQUIRED)
+find_package(ros_gz_interfaces REQUIRED)
 find_package(gazebo_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
@@ -47,6 +48,7 @@ set(PROJECT_DEPENDENCIES
   geometry_msgs
   trajectory_msgs
   ros_gz
+  ros_gz_interfaces
   gazebo_msgs
   std_msgs
   visualization_msgs

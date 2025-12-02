@@ -67,6 +67,9 @@ private:
     std::unique_ptr<tf2_ros::Buffer> tf_buffer;
     std::shared_ptr<tf2_ros::TransformListener> tf_listener;
     rclcpp::TimerBase::SharedPtr timer;
+    rclcpp::Time last_warning_time;
+    double warning_period = 2.0; // seconds
+    int trajectory_time_ms = 50;
     
     // Callbacks
     void timer_callback();

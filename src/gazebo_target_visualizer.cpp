@@ -3,8 +3,8 @@
 GazeboTargetVisualizer::GazeboTargetVisualizer() 
 : Node("gazebo_target_visualizer")
 {
-  spawn_client_ = this->create_client<gazebo_msgs::srv::SpawnEntity>("/spawn_entity");
-  delete_client_ = this->create_client<gazebo_msgs::srv::DeleteEntity>("/delete_entity");
+  spawn_client_ = this->create_client<ros_gz_interfaces::srv::SpawnEntity>("/world/default/create");
+  delete_client_ = this->create_client<ros_gz_interfaces::srv::DeleteEntity>("/world/default/remove");
   
   target_sub_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
     "/target_position", 10,
@@ -20,39 +20,53 @@ GazeboTargetVisualizer::GazeboTargetVisualizer()
 
 void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
 {
+  // ensure service is available (not sure if this is correct way to do it)
+  while (!spawn_client_->wait_for_service(wait_time)) {
+    if (!rclcpp::ok()){
+      return;
+    }
+    RCLCPP_WARN(this->get_logger(), "spawn_entity service not available");
+  }
+
   delete_current_target(); // TODO: add a way to visualize multiple targets, maybe an ID system?
   
   current_target_name_ = std::string("target_sphere_") + std::to_string(this->now().nanoseconds());
   
   auto point = msg->point;
+ 
+  std::string xml;
+  xml += R"(<?xml version="1.0"?>)";
+  xml += R"(<sdf version="1.7"><model name=")";
+  xml += current_target_name_;
+  xml += R"(">)";
+  xml += "<pose>)";
+  xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z);
+  xml += R"( 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><sphere><radius>0.05</radius></sphere></geometry>
+          <material>
+            <ambient>1 0 0 0.8</ambient>
+            <diffuse>1 0 0 0.8</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </sdf>)";
 
-  // ensure service is available (optional but recommended)
-  if (!spawn_client_->wait_for_service(std::chrono::seconds(1))) {
-      RCLCPP_WARN(this->get_logger(), "spawn_entity service not available");
-      return;
-  }
-  auto request = std::make_shared<gazebo_msgs::srv::SpawnEntity::Request>();
-  request->name = current_target_name_;
-  request->xml = R"(
-    <?xml version="1.0"?>
-    <sdf version="1.7">
-      <model name=")" + current_target_name_ + R"(">
-        <pose>)" + std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + R"( 0 0 0</pose>
-        <link name="link">
-          <visual name="visual">
-            <geometry>
-              <sphere><radius>0.05</radius></sphere>
-            </geometry>
-            <material>
-              <ambient>1 0 0 0.8</ambient>
-              <diffuse>1 0 0 0.8</diffuse>
-            </material>
-          </visual>
-        </link>
-      </model>
-    </sdf>
-  )";
-  
+  auto request = std::make_shared<ros_gz_interfaces::srv::SpawnEntity::Request>();
+  request->entity_factory.name = current_target_name_;
+  request->entity_factory.sdf = xml;
+  // // set pose fields (correct?)
+  // request->entity_factory.pose.position.x = point.x;
+  // request->entity_factory.pose.position.y = point.y;
+  // request->entity_factory.pose.position.z = point.z;
+  // request->entity_factory.pose.orientation.x = 0.0;
+  // request->entity_factory.pose.orientation.y = 0.0;
+  // request->entity_factory.pose.orientation.z = 0.0;
+  // request->entity_factory.pose.orientation.w = 1.0;
+  // request->entity_factory.relative_to = "odom";
+
   spawn_client_->async_send_request(request);
 }
 
@@ -71,12 +85,22 @@ void GazeboTargetVisualizer::clear_callback(const std_msgs::msg::Bool::SharedPtr
 
 void GazeboTargetVisualizer::delete_current_target()
 {
-    if (!current_target_name_.empty()) {
-        auto request = std::make_shared<gazebo_msgs::srv::DeleteEntity::Request>();
-        request->name = current_target_name_;
-        delete_client_->async_send_request(request);
-        current_target_name_.clear();
-    }
+  if (current_target_name_.empty()) {
+    // RCLCPP_WARN(this->get_logger(), "No current target to delete.");
+    return;
+  }
+  else if (!delete_client_->wait_for_service(wait_time)) {
+    RCLCPP_WARN(this->get_logger(), "Delete_entity service not available.");
+    return;
+  }
+  else {
+    auto request = std::make_shared<ros_gz_interfaces::srv::DeleteEntity::Request>();
+    request->entity.name = current_target_name_;
+    request->entity.type = ros_gz_interfaces::msg::Entity::MODEL;
+    
+    delete_client_->async_send_request(request);
+    current_target_name_.clear();
+  }
 }
 
 int main(int argc, char **argv)

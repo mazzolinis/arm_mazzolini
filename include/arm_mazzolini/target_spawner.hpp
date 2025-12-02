@@ -35,8 +35,8 @@ class TargetSpawner : public rclcpp::Node
         // Variables
         const int spawn_period = 5; // seconds between laser and new target
         const double min_distance = 0.2;
-        const double max_distance = 8.0;
-        const double angle_range = M_PI / 3.0;
+        const double max_distance = 4.0;
+        const double angle_range = M_PI / 1.5;
         
         // Random numbers generators
         std::mt19937 gen;

@@ -4,8 +4,6 @@ using namespace arm_mazzolini;
 
 WeederNode::WeederNode() : Node("weeder_node")
 {
-    RCLCPP_INFO(this->get_logger(), "1. QUI CI ARRIVA");
-
     // Parameters
     declare_parameters();
     l1 = this->get_parameter("link1_length").as_double();
@@ -39,6 +37,7 @@ WeederNode::WeederNode() : Node("weeder_node")
         rclcpp::Duration(std::chrono::milliseconds(callback_period_ms)), 
         std::bind(&WeederNode::timer_callback, this)
     );
+    last_warning_time = this->now();
 
     // Publishers and Action Clients
     joints_client = rclcpp_action::create_client<control_msgs::action::FollowJointTrajectory>(
@@ -55,10 +54,11 @@ WeederNode::WeederNode() : Node("weeder_node")
 
     laser_pub = this->create_publisher<std_msgs::msg::Bool>("/laser_command", 10);
 
+    // Initial arm position
+    std::vector<double> initial_joint_positions = {-M_PI/4, M_PI/4};
+    send_joint_trajectory(initial_joint_positions);
     // Initial status
     target_status = TargetStatus::NO_TARGET;
-
-    RCLCPP_INFO(this->get_logger(), "2. QUI CI ARRIVA");
 }
 
 void WeederNode::declare_parameters()
@@ -78,10 +78,16 @@ void WeederNode::declare_parameters()
 
 void WeederNode::timer_callback()
 {
+    // check if transform is available
+    if (!tf_buffer->canTransform("odom", "base_link", tf2::TimePointZero)) {
+        RCLCPP_WARN(this->get_logger(), "Transform odom->base_link not available yet");
+        timer->reset(); 
+        return;
+    }
+    
     try {
         geometry_msgs::msg::TransformStamped pose_message = 
         tf_buffer->lookupTransform("odom", "base_link", tf2::TimePointZero);
-
         pose_callback(pose_message);
     }
     catch (tf2::TransformException &ex) {
@@ -108,24 +114,36 @@ void WeederNode::pose_callback(const geometry_msgs::msg::TransformStamped msg)
             double r = std::sqrt(relative_position.x()*relative_position.x() + relative_position.y()*relative_position.y());
 
             if (r > (l1+l2)) {
-                RCLCPP_INFO(this->get_logger(), "Get closer, target out of reach.");
+                if((this->now() - last_warning_time).seconds() > warning_period ) {
+                    RCLCPP_INFO(this->get_logger(), "Get closer, target out of reach.");
+                    RCLCPP_INFO_STREAM(this->get_logger(), "Target: (" << target_position.x() << "," << target_position.y() 
+                        << "), Arm: (" << new_pose.translation().x() << "," << new_pose.translation().y() 
+                        << "), r = " << r
+                    );
+                    last_warning_time = this->now();
+                }               
                 return;
             }
             else if (relative_position.x() < 0) { // TODO: define exclusion zones
-                RCLCPP_INFO(this->get_logger(), "Target behind the robot, cannot reach.");
+                if((this->now() - last_warning_time).seconds() > warning_period) {
+                    RCLCPP_INFO(this->get_logger(), "Target behind the robot, cannot reach it.");
+                    last_warning_time = this->now();
+                }
                 return;
             }
-            else {
-                if (new_pose.isApprox(arm_pose, pose_threshold)) {
-                    std::vector<double> joint_angles = compute_ik(relative_position);
-                    send_joint_trajectory(joint_angles);
-                    arm_pose = new_pose;
-                }
-                else {
-                    RCLCPP_INFO(this->get_logger(), "STOP!!!");
-                    arm_pose = new_pose;
-                }
+            else if (new_pose.isApprox(arm_pose, pose_threshold)) {
+                std::vector<double> joint_angles = compute_ik(relative_position);
+                send_joint_trajectory(joint_angles);
+                arm_pose = new_pose;
             }
+            else {
+                if((this->now() - last_warning_time).seconds() > warning_period) {
+                    RCLCPP_INFO(this->get_logger(), "STOP!");
+                    last_warning_time = this->now();
+                }
+                arm_pose = new_pose;
+            }
+                        
             break;
         }
             
@@ -200,7 +218,7 @@ void WeederNode::send_joint_trajectory(const std::vector<double>& joint_angles)
     goal_msg.trajectory.points.clear();
     trajectory_msgs::msg::JointTrajectoryPoint point;
     point.positions = joint_angles;
-    point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(2));
+    point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_time_ms));
     goal_msg.trajectory.points.push_back(point);
 
     joints_client->async_send_goal(goal_msg, goal_options);

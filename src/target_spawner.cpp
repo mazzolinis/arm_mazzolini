@@ -45,6 +45,14 @@ void TargetSpawner::timer_callback()
 {
     // Get robot pose
     geometry_msgs::msg::TransformStamped transformStamped;
+    
+    // check if transform is available (non-blocking)
+    if (!tf_buffer->canTransform("odom", "base_link", tf2::TimePointZero)) {
+        RCLCPP_WARN(this->get_logger(), "Transform odom->base_link not available yet");
+        timer->reset(); // retry next period
+        return;
+    }
+    
     try {
         transformStamped = tf_buffer->lookupTransform("odom", "base_link", tf2::TimePointZero);
     }
@@ -63,6 +71,11 @@ void TargetSpawner::timer_callback()
     Eigen::Vector3d offset(distance * std::cos(angle), distance * std::sin(angle), 0.0);
     Eigen::Vector3d target_position = robot_pose.translation() + robot_pose.rotation() * offset;
     target_position.z() = 0.0; // ground level
+
+    // manual override (TODO: remove)
+    target_position.x() = 0.1 + (distance - (max_distance + min_distance)/2) * std::sin(angle) / 8.0;
+    target_position.y() = -0.8 + (distance - (max_distance + min_distance)/2) * std::cos(angle) / 8.0;
+
 
     // Publish target
     geometry_msgs::msg::PointStamped target_msg;
