@@ -101,11 +101,11 @@ def generate_launch_description():
             )
         ),
         launch_arguments={
-            'gz_args': 'default.sdf',
+            # 'gz_args': 'default.sdf',
+            'gz_args': PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "worlds", "agricultural_world.sdf"]),
             'use_sim_time': use_sim_time,
             "verbose": "true",
-            # "gui": use_gui
-            }.items(),
+        }.items(),
     )
 
     # Nodes
@@ -122,15 +122,17 @@ def generate_launch_description():
     )
     nodes.append(spawn_entity)
 
-    # joint_state_pub = Node(
-    #     package = "joint_state_publisher",
-    #     executable = "joint_state_publisher",
-    #     name = "joint_state_publisher",
-    #     output = "screen",
-    #     condition = UnlessCondition(use_gui),
-    #     parameters=[{"use_sim_time": use_sim_time}],
-    # )
-    # nodes.append(joint_state_pub)
+    spawn_world = Node(
+        package = "ros_gz_sim",
+        executable = "create",
+        arguments = ['-file', PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "urdf", "agriculture_geometry.urdf.xacro"]),
+                     '-name', 'agriculture_world',
+                     '-x', '0', '-y', '0', '-z', '0',
+                     '-R', '0', '-P', '0', '-Y', '0',],
+        parameters=[{'use_sim_time': use_sim_time}],
+        output = 'screen',
+    )
+    nodes.append(spawn_world)
 
     joint_state_pub_gui = Node(
         package = "joint_state_publisher_gui",

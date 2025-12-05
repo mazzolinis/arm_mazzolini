@@ -1,0 +1,28 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://wiki.ros.org/xacro" name="clearpath_base_station">
+  <xacro:macro name="cpr_charge_dock" params="name parent *origin">
+
+  <xacro:property name="package_path" value="$(find arm_mazzolini)"/>
+  <xacro:property name="mesh_path" value="${package_path}/meshes/argiculture_world"/>
+  
+    <link name="${name}_link">
+      <visual>
+        <geometry>
+          <mesh filename="${mesh_path}/WiboticTR301.dae" />
+        </geometry>
+        <origin xyz="-0.35 0 0" rpy="0 0 1.5707963267948966" />
+      </visual>
+      <collision>
+        <geometry>
+          <mesh filename="${mesh_path}/WiboticTR301.stl" />
+        </geometry>
+        <origin xyz="-0.35 0 0" rpy="0 0 1.5707963267948966" />
+      </collision>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="${parent}" />
+      <child link="${name}_link" />
+      <xacro:insert_block name="origin" />
+    </joint>
+  </xacro:macro>
+</robot>
