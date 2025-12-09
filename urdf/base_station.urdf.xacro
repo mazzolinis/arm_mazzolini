@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://wiki.ros.org/xacro" name="clearpath_base_station">
 
   <xacro:property name="package_path" value="$(find arm_mazzolini)"/>
-  <xacro:property name="mesh_path" value="${package_path}/meshes/argiculture_world"/>
+  <xacro:property name="mesh_path" value="${package_path}/meshes/agriculture_world"/>
 
   <xacro:macro name="cpr_base_station" params="name parent *origin">
     <link name="${name}_link">

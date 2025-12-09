@@ -3,7 +3,7 @@
   <xacro:macro name="cpr_charge_dock" params="name parent *origin">
 
   <xacro:property name="package_path" value="$(find arm_mazzolini)"/>
-  <xacro:property name="mesh_path" value="${package_path}/meshes/argiculture_world"/>
+  <xacro:property name="mesh_path" value="${package_path}/meshes/agriculture_world"/>
   
     <link name="${name}_link">
       <visual>

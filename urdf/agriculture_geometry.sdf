@@ -1,0 +1,73 @@
+<sdf version='1.7'>
+  <model name='agriculture_world'>
+    <link name='agriculture_world_link'>
+      <inertial>
+        <pose>0 0 0 0 -0 0</pose>
+        <mass>1</mass>
+        <inertia>
+          <ixx>1</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1</iyy>
+          <iyz>0</iyz>
+          <izz>1</izz>
+        </inertia>
+      </inertial>
+      <collision name='agriculture_world_link_collision'>
+        <pose>0 0 0 0 -0 3.14159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>/home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/agriculture_world/agriculture_world.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <collision name='agriculture_world_link_fixed_joint_lump__base_station_link_collision_1'>
+        <pose>-40 -17 0.7 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>/home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/agriculture_world/BaseStationWithTripod.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <collision name='agriculture_world_link_fixed_joint_lump__charge_dock_link_collision_2'>
+        <pose>8 -4.35 -0.2 0 -0 3.14159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>/home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/agriculture_world/WiboticTR301.stl</uri>
+          </mesh>
+        </geometry>
+      </collision>
+      <visual name='agriculture_world_link_visual'>
+        <pose>0 0 0 0 -0 3.14159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>/home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/agriculture_world/agriculture_world.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <visual name='agriculture_world_link_fixed_joint_lump__base_station_link_visual_1'>
+        <pose>-40 -17 0.7 0 -0 0</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>/home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/agriculture_world/BaseStationWithTripod.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+      <visual name='agriculture_world_link_fixed_joint_lump__charge_dock_link_visual_2'>
+        <pose>8 -4.35 -0.2 0 -0 3.14159</pose>
+        <geometry>
+          <mesh>
+            <scale>1 1 1</scale>
+            <uri>/home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/agriculture_world/WiboticTR301.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <static>1</static>
+  </model>
+</sdf>

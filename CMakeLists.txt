@@ -97,7 +97,7 @@ install(
 )
 
 install(
-  DIRECTORY launch urdf config rviz meshes worlds
+  DIRECTORY launch urdf config rviz meshes worlds models
   DESTINATION share/${PROJECT_NAME}
 )
 
