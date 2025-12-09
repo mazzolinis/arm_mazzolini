@@ -5,6 +5,15 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
     dist_rand(min_distance, max_distance),
     angle_rand(-angle_range/2, angle_range/2)
 {
+    try{
+        this->declare_parameter("world_height", double());
+        world_height = this->get_parameter("world_height").as_double();
+    }
+    catch (const rclcpp::ParameterTypeException &e) {
+        RCLCPP_ERROR(this->get_logger(), "Parameter 'world_height' not found or of wrong type, using default 2.0 m");
+        world_height = 2.0;
+    }
+
     target_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("/target_position", 10);
     laser_sub = this->create_subscription<std_msgs::msg::Bool>(
         "/laser_command", 10,
@@ -70,7 +79,7 @@ void TargetSpawner::timer_callback()
 
     Eigen::Vector3d offset(distance * std::cos(angle), distance * std::sin(angle), 0.0);
     Eigen::Vector3d target_position = robot_pose.translation() + robot_pose.rotation() * offset;
-    target_position.z() = 0.0; // ground level
+    target_position.z() = world_height; // ground level
 
     // manual override (TODO: remove)
     target_position.x() = 0.1 + (distance - (max_distance + min_distance)/2) * std::sin(angle) / 8.0;

@@ -36,18 +36,20 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
  
   std::string xml;
   xml += R"(<?xml version="1.0"?>)";
-  xml += R"(<sdf version="1.7"><model name=")";
+  xml += R"(<sdf version="1.8"><model name=")";
   xml += current_target_name_;
   xml += R"(">)";
-  xml += "<pose>)";
+  xml += "<pose>";
   xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z);
   xml += R"( 0 0 0</pose>
       <link name="link">
         <visual name="visual">
           <geometry><sphere><radius>0.05</radius></sphere></geometry>
           <material>
-            <ambient>1 0 0 0.8</ambient>
-            <diffuse>1 0 0 0.8</diffuse>
+            <ambient>1 0 0 1</ambient>
+            <diffuse>1 0 0 1</diffuse>
+            <specular>1 0.5 0.5 1</specular>
+            <emissive>0.5 0 0 1</emissive>
           </material>
         </visual>
       </link>
@@ -67,7 +69,10 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   // request->entity_factory.pose.orientation.w = 1.0;
   // request->entity_factory.relative_to = "odom";
 
-  spawn_client_->async_send_request(request);
+  // spawn_client_->async_send_request(request);
+  auto future = spawn_client_->async_send_request(request,
+    std::bind(&GazeboTargetVisualizer::spawn_callback, this, std::placeholders::_1)
+    );
 }
 
 void GazeboTargetVisualizer::clear_callback(const std_msgs::msg::Bool::SharedPtr msg)
@@ -101,6 +106,17 @@ void GazeboTargetVisualizer::delete_current_target()
     delete_client_->async_send_request(request);
     current_target_name_.clear();
   }
+}
+
+void GazeboTargetVisualizer::spawn_callback(
+    rclcpp::Client<ros_gz_interfaces::srv::SpawnEntity>::SharedFuture future)
+{
+    auto response = future.get();
+    if (response->success) {
+        RCLCPP_INFO(this->get_logger(), "✅ Target spawned successfully!");
+    } else {
+        RCLCPP_ERROR(this->get_logger(), "❌ Failed to spawn target");
+    }
 }
 
 int main(int argc, char **argv)

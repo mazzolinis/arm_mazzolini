@@ -17,6 +17,9 @@ class TargetSpawner : public rclcpp::Node
         TargetSpawner();
 
     private:
+
+        double world_height;
+        
         // Publisher
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr target_pub;
 

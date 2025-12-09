@@ -5,7 +5,7 @@ from launch.actions import DeclareLaunchArgument,IncludeLaunchDescription, Regis
 from launch.conditions import IfCondition,UnlessCondition
 from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command,FindExecutable,LaunchConfiguration,PathJoinSubstitution
+from launch.substitutions import Command,FindExecutable,LaunchConfiguration,PathJoinSubstitution, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
@@ -33,6 +33,13 @@ def generate_launch_description():
             "height",
             default_value="0.4",
             description="Height to spawn the robot at",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "world_height",
+            default_value="2.0",
+            description="Height of barn relative to flat map",
         )
     )
     declared_arguments.append(
@@ -117,8 +124,8 @@ def generate_launch_description():
             )
         ),
         launch_arguments={
-            # 'gz_args': 'default.sdf',
-            'gz_args': PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "worlds", "agricultural_world.sdf"]),
+            'gz_args': 'default.sdf',
+            # 'gz_args': PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "worlds", "agricultural_world.sdf"]),
             # 'gz_args': PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "worlds", "agricultural_world_with_barn.sdf"]),
             'use_sim_time': use_sim_time,
             "verbose": "true",
@@ -128,15 +135,13 @@ def generate_launch_description():
     # Nodes
     nodes = []
 
-    robot_description = {"robot_description": robot_description_content}
-
     robot_state_publisher = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
         name="robot_state_publisher",
         output="screen",
         parameters=[
-            robot_description,
+            {"robot_description": robot_description_content},
             {"use_sim_time": use_sim_time}
         ]
     )
@@ -147,7 +152,7 @@ def generate_launch_description():
         executable = "create",
         arguments = ['-topic', '/robot_description',
                     '-name', robot_name,
-                    '-x', '0', '-y', '0', '-z', height,
+                    '-x', '0', '-y', '0', '-z', PythonExpression([LaunchConfiguration('height'), ' + ', LaunchConfiguration('world_height')]),
                     '-R', '0', '-P', '0', '-Y', '0',],
         parameters=[{'use_sim_time': use_sim_time}],
         output = 'screen',
@@ -159,7 +164,7 @@ def generate_launch_description():
         executable = "create",
         arguments = ['-file', PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "urdf", "agriculture_geometry.urdf"]),
                      '-name', 'agriculture_world',
-                     '-x', '0', '-y', '0', '-z', '0',
+                     '-x', '0', '-y', '0', '-z', LaunchConfiguration("world_height"),
                      '-R', '0', '-P', '0', '-Y', '0',],
         parameters=[{'use_sim_time': use_sim_time}],
         output = 'screen',
@@ -229,7 +234,11 @@ def generate_launch_description():
     clock_bridge=Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
-        arguments=['/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock'],
+        arguments=[
+        '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
+        '/world/default/create@ros_gz_interfaces/srv/SpawnEntity',
+        '/world/default/remove@ros_gz_interfaces/srv/DeleteEntity'
+        ],
         condition=IfCondition(use_sim_time),
         output='screen'
     )
@@ -249,21 +258,24 @@ def generate_launch_description():
         package = "arm_mazzolini",
         executable = "target_spawner",
         name = "target_spawner",
-        parameters = [{"use_sim_time":use_sim_time}],
+        parameters = [
+            {"use_sim_time":use_sim_time},
+            {"world_height": LaunchConfiguration("world_height")}
+            ],
         output = "screen",
         condition = UnlessCondition(use_gui)
     )
     nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[target_spawner])])))
 
-    # gazebo_target_visualizer = Node(
-    #     package = "arm_mazzolini",
-    #     executable = "gazebo_target_visualizer",
-    #     name = "gazebo_target_visualizer",
-    #     parameters = [{"use_sim_time":use_sim_time}],
-    #     output = "screen",
-    #     condition = UnlessCondition(use_gui)
-    # )
-    # nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[gazebo_target_visualizer])])))
+    gazebo_target_visualizer = Node(
+        package = "arm_mazzolini",
+        executable = "gazebo_target_visualizer",
+        name = "gazebo_target_visualizer",
+        parameters = [{"use_sim_time":use_sim_time}],
+        output = "screen",
+        condition = UnlessCondition(use_gui)
+    )
+    nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[gazebo_target_visualizer])])))
 
     # rviz_target_visualizer = Node(
     #     package = "arm_mazzolini",

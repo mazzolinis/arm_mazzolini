@@ -25,4 +25,5 @@ private:
     void target_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg);
     void clear_callback(const std_msgs::msg::Bool::SharedPtr msg);
     void delete_current_target();
+    void spawn_callback(const rclcpp::Client<ros_gz_interfaces::srv::SpawnEntity>::SharedFuture future);
 };
