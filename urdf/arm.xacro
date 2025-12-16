@@ -122,6 +122,19 @@
             </link>
         </xacro:if>
 
+        <link name="camera_link"></link>
+
+        <joint name="camera_joint" type="fixed">
+            <xacro:unless value="${is_light}">
+                <parent link="link2_heavy"/>
+            </xacro:unless>
+            <xacro:if value="${is_light}">
+                <parent link="link2_light"/>
+            </xacro:if>
+            <child link="camera_link"/>
+            <origin xyz="${l2/2} 0 ${-0.05}" rpy="${PI} 0 ${-PI/2}"/>
+        </joint>
+
         <!-- Joint 1 (Revolute) -->
         <joint name="joint1" type="revolute">
             <parent link="arm_base_link"/>
@@ -129,7 +142,7 @@
             <origin xyz="${l0} 0 ${h0}" rpy="0 0 0"/>
             <!-- <origin xyz="0 0 ${h0}" rpy="0 0 0"/> -->
             <axis xyz="0 0 1"/>
-            <limit effort="10" lower="-${PI}" upper="${PI}" velocity="1000"/>
+            <limit effort="100" lower="-${PI}" upper="${PI}" velocity="1000"/>
         </joint>
 
         <!-- Joint 2 (Revolute) -->
@@ -143,7 +156,7 @@
             </xacro:if>
             <origin xyz="${l1} 0 ${h1}" rpy="0 0 0"/>
             <axis xyz="0 0 1"/>
-            <limit effort="10" lower="-${PI}" upper="${PI}" velocity="1000"/>
+            <limit effort="100" lower="-${PI}" upper="${PI}" velocity="1000"/>
         </joint>
     </xacro:macro>
 

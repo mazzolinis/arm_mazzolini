@@ -27,18 +27,10 @@ find_package(ros_gz_interfaces REQUIRED)
 find_package(gazebo_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
-find_package(tf2)
-find_package(tf2_ros)
-find_package(tf2_eigen)
-
-# ==============================================================================
-#                                   ADD NODE                                   
-# ==============================================================================
-
-add_executable(kinematic_node src/kinematic_node.cpp)
-add_executable(gazebo_target_visualizer src/gazebo_target_visualizer.cpp)
-add_executable(rviz_target_visualizer src/rviz_target_visualizer.cpp)
-add_executable(target_spawner src/target_spawner.cpp)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_eigen REQUIRED)
+find_package(camera_info_manager REQUIRED)
 
 set(PROJECT_DEPENDENCIES
   rclcpp
@@ -55,7 +47,18 @@ set(PROJECT_DEPENDENCIES
   tf2
   tf2_ros
   tf2_eigen
+  camera_info_manager
 )
+
+# ==============================================================================
+#                                   ADD NODES                                   
+# ==============================================================================
+
+add_executable(kinematic_node src/kinematic_node.cpp)
+add_executable(gazebo_target_visualizer src/gazebo_target_visualizer.cpp)
+add_executable(rviz_target_visualizer src/rviz_target_visualizer.cpp)
+add_executable(target_spawner src/target_spawner.cpp)
+add_executable(camera_info_publisher src/camera_info_publisher.cpp)
 
 ament_target_dependencies(
   kinematic_node PUBLIC
@@ -73,6 +76,10 @@ ament_target_dependencies(
   target_spawner PUBLIC
   ${PROJECT_DEPENDENCIES}
 )
+ament_target_dependencies(
+  camera_info_publisher PUBLIC
+  ${PROJECT_DEPENDENCIES}
+)
 
 target_include_directories(kinematic_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -87,6 +94,10 @@ target_include_directories(rviz_target_visualizer PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 target_include_directories(target_spawner PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+target_include_directories(camera_info_publisher PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
@@ -111,6 +122,9 @@ install(TARGETS rviz_target_visualizer
   DESTINATION lib/${PROJECT_NAME}
 )
 install(TARGETS target_spawner
+  DESTINATION lib/${PROJECT_NAME}
+)
+install(TARGETS camera_info_publisher
   DESTINATION lib/${PROJECT_NAME}
 )
 # ============================================================================== #

@@ -23,13 +23,6 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            "use_gui", # TODO: remove this argument, simulation can't use joint_trajectory_gui anymore
-            default_value="false",
-            description="Enable gazebo GUI if true",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
             "height",
             default_value="0.4",
             description="Height to spawn the robot at",
@@ -40,13 +33,6 @@ def generate_launch_description():
             "world_height",
             default_value="2.0",
             description="Height of barn relative to flat map",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "is_wheeled", # TODO: remove this argument too
-            default_value="true",
-            description="Set true when you'll have wheeled robot defined",
         )
     )
     declared_arguments.append(
@@ -65,24 +51,28 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            "controller",
-            default_value = "weeder_controller.yaml",
-            description = "Controller configuration file"
-        )
+            "use_camera",
+            default_value="true",
+            description="Set true to use simulated camera",
+    )
     )
 
     # Initialize Arguments
     use_sim_time = LaunchConfiguration("use_sim_time")
-    use_gui = LaunchConfiguration("use_gui")
     height = LaunchConfiguration("height")
-    is_wheeled = LaunchConfiguration("is_wheeled")
+    world_height = LaunchConfiguration("world_height")
     is_light = LaunchConfiguration("is_light")
     use_rviz = LaunchConfiguration("use_rviz")
-    controller = LaunchConfiguration("controller")
+    use_camera = LaunchConfiguration("use_camera")
 
     pkg_share = FindPackageShare("arm_mazzolini")
 
     robot_name = "weeder_robot"
+    if is_light == "true":
+        controller = "weeder_controller_light.yaml"
+    else:
+        controller = "weeder_controller_heavy.yaml"
+    
     controller_config_file = PathJoinSubstitution(
         [pkg_share, "config", controller],
     )
@@ -108,9 +98,9 @@ def generate_launch_description():
                 [pkg_share, "urdf", "weeder_robot.xacro"]
             ),
             " ",
-            "is_wheeled:=", is_wheeled,
-            " ",
             "is_light:=", is_light,
+            " ",
+            "use_camera:=", use_camera,
             " ",
             "controller_yaml:=", controller_config_file,
         ]
@@ -171,16 +161,6 @@ def generate_launch_description():
     )
     nodes.append(spawn_world)
 
-    joint_state_pub_gui = Node(
-        package = "joint_state_publisher_gui",
-        executable = "joint_state_publisher_gui",
-        name = "joint_state_publisher_gui",
-        output = "screen",
-        condition = IfCondition(use_gui),
-        parameters=[{"use_sim_time": use_sim_time}],
-    )
-    nodes.append(joint_state_pub_gui)
-
     rviz_config_file = PathJoinSubstitution(
         [FindPackageShare("arm_mazzolini"), "rviz", "second_config.rviz"]
     )
@@ -198,8 +178,7 @@ def generate_launch_description():
     joint_state_broadcaster = Node(
         package = "controller_manager",
         executable = "spawner",
-        arguments = ["joint_state_broadcaster"],
-        condition = UnlessCondition(use_gui)
+        arguments = ["joint_state_broadcaster"]
     )
     # nodes.append(joints_state_broadcaster)
     # nodes.append(RegisterEventHandler(OnProcessStart(target_action=controller_manager,on_start=[joint_state_broadcaster])))
@@ -213,7 +192,6 @@ def generate_launch_description():
             '--controller-manager', '/controller_manager',
             '--param-file', controller_config_file,
             ],
-        condition = UnlessCondition(use_gui)
     )
     # nodes.append(RegisterEventHandler(OnProcessStart(target_action=controller_manager,on_start=[joint_trajectory_controller])))
     nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity,on_exit=[TimerAction(period=10.0, actions=[joint_trajectory_controller])])))
@@ -226,31 +204,38 @@ def generate_launch_description():
             '--controller-manager', '/controller_manager',
             '--param-file', controller_config_file,
         ],
-        condition = IfCondition(is_wheeled),
         output='screen'
     )
     nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity,on_exit=[TimerAction(period=10.0, actions=[diff_drive_controller])])))
 
-    clock_bridge=Node(
+    gz_bridge=Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
         '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
         '/world/default/create@ros_gz_interfaces/srv/SpawnEntity',
-        '/world/default/remove@ros_gz_interfaces/srv/DeleteEntity'
+        '/world/default/remove@ros_gz_interfaces/srv/DeleteEntity',
+        # left/right images
+        '/camera/left/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
+        '/camera/right/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
+        # camera_info 
+        '/camera/left/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
+        '/camera/right/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
+        # depth & points
+        '/camera/depth/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
+        '/camera/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked',
         ],
         condition=IfCondition(use_sim_time),
         output='screen'
     )
-    nodes.append(clock_bridge)
+    nodes.append(gz_bridge)
 
     kinematic_node = Node(
         package = "arm_mazzolini",
         executable = "kinematic_node",
         name = "kinematic_node",
         parameters = [{"use_sim_time":use_sim_time}, controller_config_file],
-        output = "screen",
-        condition = UnlessCondition(use_gui)
+        output = "screen"
     )
     nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=15.0, actions=[kinematic_node])])))
 
@@ -262,8 +247,7 @@ def generate_launch_description():
             {"use_sim_time":use_sim_time},
             {"world_height": LaunchConfiguration("world_height")}
             ],
-        output = "screen",
-        condition = UnlessCondition(use_gui)
+        output = "screen"
     )
     nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[target_spawner])])))
 
@@ -272,8 +256,7 @@ def generate_launch_description():
         executable = "gazebo_target_visualizer",
         name = "gazebo_target_visualizer",
         parameters = [{"use_sim_time":use_sim_time}],
-        output = "screen",
-        condition = UnlessCondition(use_gui)
+        output = "screen"
     )
     nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[gazebo_target_visualizer])])))
 
@@ -286,5 +269,37 @@ def generate_launch_description():
     #     condition = IfCondition(use_rviz)
     # )
     # nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[rviz_target_visualizer])])))
+
+    camera_info_left = Node(
+        package='arm_mazzolini',
+        executable='camera_info_publisher',
+        name='camera_info_left',
+        parameters=[{
+            'camera_name': 'realsense_d435_left',
+            'camera_info_url': PathJoinSubstitution([pkg_share, 'config', 'camera_info_left.yaml']),
+            'image_topic': '/camera/left/image_raw',
+            'camera_info_topic': '/camera/left/camera_info',
+            'use_sim_time': use_sim_time,
+        }],
+        output='screen',
+    )
+    nodes.append(camera_info_left)
+
+    camera_info_right = Node(
+        package='arm_mazzolini',
+        executable='camera_info_publisher',
+        name='camera_info_right',
+        parameters=[{
+            'camera_name': 'realsense_d435_left',
+            'camera_info_url': PathJoinSubstitution([pkg_share, 'config', 'camera_info_right.yaml']),
+            'image_topic': '/camera/left/image_raw',
+            'camera_info_topic': '/camera/left/camera_info',
+            'use_sim_time': use_sim_time,
+        }],
+        output='screen',
+    )
+    nodes.append(camera_info_right)
+
+
 
     return LaunchDescription(declared_arguments + [gz_launch] + nodes)

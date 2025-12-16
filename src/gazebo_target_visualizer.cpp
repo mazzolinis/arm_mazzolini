@@ -33,18 +33,24 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   current_target_name_ = std::string("target_sphere_") + std::to_string(this->now().nanoseconds());
   
   auto point = msg->point;
- 
+
+  // RCLCPP_INFO(this->get_logger(), "Spawning new target at [%.2f, %.2f, %.2f]", point.x, point.y, point.z);
+
   std::string xml;
   xml += R"(<?xml version="1.0"?>)";
   xml += R"(<sdf version="1.8"><model name=")";
   xml += current_target_name_;
   xml += R"(">)";
+  xml += "<static>true</static>"; 
   xml += "<pose>";
   xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z);
   xml += R"( 0 0 0</pose>
       <link name="link">
+        <gravity>false</gravity>  <!-- Disable gravity for this object -->
+        
+        <!-- VISUAL (what you see) -->
         <visual name="visual">
-          <geometry><sphere><radius>0.05</radius></sphere></geometry>
+          <geometry><sphere><radius>0.03</radius></sphere></geometry>
           <material>
             <ambient>1 0 0 1</ambient>
             <diffuse>1 0 0 1</diffuse>
@@ -52,6 +58,29 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
             <emissive>0.5 0 0 1</emissive>
           </material>
         </visual>
+        
+        <!-- COLLISION (physics interaction) -->
+        <collision name="collision">
+          <geometry><sphere><radius>0.01</radius></sphere></geometry>
+          <surface>
+            <contact>
+              <ode>
+                <min_depth>0.01</min_depth>
+                <max_vel>0.0</max_vel>
+              </ode>
+            </contact>
+          </surface>
+        </collision>
+        
+        <!-- INERTIAL (mass properties) -->
+        <inertial>
+          <mass>0.1</mass>  <!-- Small mass -->
+          <inertia>
+            <ixx>0.0001</ixx>
+            <iyy>0.0001</iyy>
+            <izz>0.0001</izz>
+          </inertia>
+        </inertial>
       </link>
     </model>
   </sdf>)";
@@ -59,15 +88,15 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   auto request = std::make_shared<ros_gz_interfaces::srv::SpawnEntity::Request>();
   request->entity_factory.name = current_target_name_;
   request->entity_factory.sdf = xml;
-  // // set pose fields (correct?)
-  // request->entity_factory.pose.position.x = point.x;
-  // request->entity_factory.pose.position.y = point.y;
-  // request->entity_factory.pose.position.z = point.z;
-  // request->entity_factory.pose.orientation.x = 0.0;
-  // request->entity_factory.pose.orientation.y = 0.0;
-  // request->entity_factory.pose.orientation.z = 0.0;
-  // request->entity_factory.pose.orientation.w = 1.0;
-  // request->entity_factory.relative_to = "odom";
+
+  request->entity_factory.pose.position.x = point.x;
+  request->entity_factory.pose.position.y = point.y;
+  request->entity_factory.pose.position.z = point.z;
+  request->entity_factory.pose.orientation.x = 0.0;
+  request->entity_factory.pose.orientation.y = 0.0;
+  request->entity_factory.pose.orientation.z = 0.0;
+  request->entity_factory.pose.orientation.w = 1.0;
+  request->entity_factory.relative_to = "odom";
 
   // spawn_client_->async_send_request(request);
   auto future = spawn_client_->async_send_request(request,

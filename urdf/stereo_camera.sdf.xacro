@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+<sdf version="1.8" xmlns:xacro="http://ros.org/wiki/xacro">
+
+    <xacro:property name="PI" value="3.141592" />
+    <xacro:property name="baseline" value="0.05" />
+    <xacro:property name="width" value="1280" />
+    <xacro:property name="height" value="720" />
+    <xacro:property name="fps" value="30" />
+    <xacro:property name="hfov" value="${PI}/3" />
+    <xacro:property name="name_prefix" value="/camera" />
+
+    <gazebo reference="camera_link">
+
+        <!-- left camera -->
+        <sensor name="left_camera_sensor" type="camera">
+            <always_on>1</always_on>
+            <update_rate>${fps}</update_rate>
+            <pose>0 0 0 0 0 0</pose>
+            <camera>
+                <horizontal_fov>${hfov}</horizontal_fov>
+                <image>
+                    <width>${width}</width>
+                    <height>${height}</height>
+                    <format>R8G8B8</format>
+                </image>
+                <clip>
+                    <near>0.1</near>
+                    <far>10.0</far>
+                </clip>
+            </camera>
+            <topic>${name_prefix}/left/image_raw</topic>
+        </sensor>
+
+        <!-- right camera -->
+        <sensor name="right_camera_sensor" type="camera">
+            <always_on>1</always_on>
+            <update_rate>${fps}</update_rate>
+            <pose>${baseline} 0 0 0 0 0</pose>
+            <camera>
+                <horizontal_fov>${hfov}</horizontal_fov>
+                <image>
+                    <width>${width}</width>
+                    <height>${height}</height>
+                    <format>R8G8B8</format>
+                </image>
+                <clip>
+                    <near>0.1</near>
+                    <far>10.0</far>
+                </clip>
+            </camera>
+            <topic>${name_prefix}/right/image_raw</topic>
+        </sensor>
+
+        <!-- depth -->
+        <sensor name="depth_sensor" type="depth">
+            <always_on>1</always_on>
+            <update_rate>${fps}</update_rate>
+            <pose>0 0 0 0 0 0</pose>
+            <camera>
+                <horizontal_fov>${hfov}</horizontal_fov>
+                <image>
+                    <width>${width}</width>
+                    <height>${height}</height>
+                    <format>R8G8B8</format>
+                </image>
+                <clip>
+                    <near>0.1</near>
+                    <far>10.0</far>
+                </clip>
+            </camera>
+            <topic>${name_prefix}/depth/image_raw</topic>
+        </sensor>
+
+        <!-- pointcloud -->
+        <sensor name="points_sensor" type="pointcloud">
+            <always_on>1</always_on>
+            <update_rate>${fps}</update_rate>
+            <pose>0 0 0 0 0 0</pose>
+            <pointcloud>
+                <render_mode>points</render_mode>
+            </pointcloud>
+            <topic>${name_prefix}/points</topic>
+        </sensor>
+
+    </gazebo>
+
+</sdf>
