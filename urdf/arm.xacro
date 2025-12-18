@@ -1,22 +1,22 @@
 <?xml version="1.0"?>
 <robot name="weeder_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-
     <!-- Parameters -->
     <xacro:property name="PI" value="3.141592" />
     <xacro:property name="base_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Arm_base.stl"/>
     <xacro:property name="link1_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Braccio_intermedio.stl"/>
     <xacro:property name="link2_heavy_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Braccio2.stl"/>
     <xacro:property name="link2_light_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Braccio3.stl"/>
+    <xacro:property name="camera_mesh" value="file://$(find arm_mazzolini)/meshes/stl/D435.stl"/>
     <xacro:property name="h0" value="0.07"/>
     <xacro:property name="l0" value="0.190"/>
     <xacro:property name="h1" value="0.0"/>
     <xacro:property name="l1" value="0.190"/>
-    <xacro:property name="h2" value="-0.034"/>
+    <xacro:property name="h2" value="-0.037"/>
     <xacro:property name="l2" value="0.250"/> 
     <xacro:property name="scale" value="1e-3 1e-3 1e-3"/>
     
-    <xacro:macro name="arm" params= "is_light">
+    <xacro:macro name="arm" params= "is_light use_camera">
         <!-- Base Link of robotic arm-->
         <link name="arm_base_link">
             <visual>
@@ -122,19 +122,33 @@
             </link>
         </xacro:if>
 
-        <link name="camera_link"></link>
+        <xacro:if value="${use_camera}">
+            <link name="camera_link">
+                <visual>
+                    <geometry>
+                        <mesh filename="${camera_mesh}" scale="${scale}*1000"/>
+                    </geometry>
+                </visual>
+                <collision>
+                    <geometry>
+                        <mesh filename="${camera_mesh}" scale="${scale}*1000"/>
+                    </geometry>
+                </collision>
+            </link>
+        
+            <joint name="camera_joint" type="fixed">
+                <xacro:unless value="${is_light}">
+                    <parent link="link2_heavy"/>
+                </xacro:unless>
+                <xacro:if value="${is_light}">
+                    <parent link="link2_light"/>
+                </xacro:if>
+                <child link="camera_link"/>
+                <origin xyz="${l2/2} 0 ${h2-0.05}" rpy="${PI} 0 ${-PI/2}"/>
+            </joint>
 
-        <joint name="camera_joint" type="fixed">
-            <xacro:unless value="${is_light}">
-                <parent link="link2_heavy"/>
-            </xacro:unless>
-            <xacro:if value="${is_light}">
-                <parent link="link2_light"/>
-            </xacro:if>
-            <child link="camera_link"/>
-            <origin xyz="${l2/2} 0 ${-0.05}" rpy="${PI} 0 ${-PI/2}"/>
-        </joint>
-
+        </xacro:if>
+        
         <!-- Joint 1 (Revolute) -->
         <joint name="joint1" type="revolute">
             <parent link="arm_base_link"/>

@@ -10,11 +10,11 @@
 
 using namespace std::chrono_literals;
 
-class CameraInfoManagerPublisher : public rclcpp::Node
+class CameraInfoPublisher : public rclcpp::Node
 {
 public:
-  CameraInfoManagerPublisher()
-  : Node("camera_info_manager_publisher")
+  CameraInfoPublisher()
+  : Node("camera_info_publisher")
   {
     // param defaults
     this->declare_parameter<std::string>("camera_name", "camera");
@@ -31,7 +31,7 @@ public:
 
     // Create CameraInfoManager
     // Note: constructor used by many ROS2 drivers: CameraInfoManager(node, camera_name, camera_info_url)
-    cam_info_mgr_ = std::make_unique<camera_info_manager::CameraInfoManager>(this->get_node_base_interface(), camera_name_, camera_info_url_);
+    cam_info_mgr_ = std::make_unique<camera_info_manager::CameraInfoManager>(this, camera_name_, camera_info_url_);
 
     // If manager has a valid calibration loaded, ok; if not, it still works (publishes default CameraInfo)
     if (cam_info_mgr_->isCalibrated()) {
@@ -48,10 +48,10 @@ public:
     img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
       image_topic_,
       rclcpp::QoS(rclcpp::KeepLast(queue_size_)).best_effort(),
-      std::bind(&CameraInfoManagerPublisher::image_callback, this, std::placeholders::_1)
+      std::bind(&CameraInfoPublisher::image_callback, this, std::placeholders::_1)
     );
 
-    RCLCPP_INFO(this->get_logger(), "CameraInfoManagerPublisher ready: image_topic='%s' -> camera_info_topic='%s' (camera_name='%s')",
+    RCLCPP_INFO(this->get_logger(), "CameraInfoPublisher ready: image_topic='%s' -> camera_info_topic='%s' (camera_name='%s')",
                 image_topic_.c_str(), camera_info_topic_.c_str(), camera_name_.c_str());
   }
 
@@ -86,7 +86,7 @@ private:
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  auto node = std::make_shared<CameraInfoManagerPublisher>();
+  auto node = std::make_shared<CameraInfoPublisher>();
   rclcpp::spin(node);
   rclcpp::shutdown();
   return 0;

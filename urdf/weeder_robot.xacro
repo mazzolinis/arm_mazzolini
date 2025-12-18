@@ -5,9 +5,9 @@
 
     <!-- Parameters  -->
     <xacro:arg name= "is_light" default="true"/>
-    <xacro:arg name="use_camera" default="true"/>
     <xacro:arg name= "controller_yaml" default=""/>
-   
+    <xacro:arg name= "use_camera" default="false"/>
+
     <xacro:macro name="weeder_robot" params="is_light use_camera controller_yaml">
 
         <!-- Including base and arm xacro files -->
@@ -18,7 +18,7 @@
         <xacro:bunker_fake/>
 
         <!-- Create robotic arm -->
-        <xacro:arm is_light="${is_light}"/>
+        <xacro:arm is_light="${is_light}" use_camera="${use_camera}"/>
 
         <!-- Create weeder robot by connecting base and arm -->
         <!-- Fixed joint connecting base_link and arm_base_link -->
@@ -55,15 +55,9 @@
             </sensor> -->
         </gazebo>
 
-        <!-- Add camera simulation -->
-        <xacro:if value="${use_camera}">
-            <xacro:include filename="$(find arm_mazzolini)/urdf/stereo_camera.sdf.xacro"/>
-            <xacro:stereo_camera/>
-        </xacro:if>
-
     </xacro:macro>
 
 
-    <xacro:weeder_robot is_light="$(arg is_light)" controller_yaml="$(arg controller_yaml)"/>
+    <xacro:weeder_robot is_light="$(arg is_light)" use_camera="$(arg use_camera)" controller_yaml="$(arg controller_yaml)"/>
 
 </robot>

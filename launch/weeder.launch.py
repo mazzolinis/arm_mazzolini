@@ -1,7 +1,7 @@
 import os
 # from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument,IncludeLaunchDescription, RegisterEventHandler, TimerAction, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument,IncludeLaunchDescription, RegisterEventHandler, TimerAction, SetEnvironmentVariable, ExecuteProcess
 from launch.conditions import IfCondition,UnlessCondition
 from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -45,7 +45,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "use_rviz",
-            default_value="true",
+            default_value="false",
             description="Set to false to disable RViz",
         )
     )
@@ -105,6 +105,9 @@ def generate_launch_description():
             "controller_yaml:=", controller_config_file,
         ]
     )
+    stereo_camera_sdf = PathJoinSubstitution(
+        [pkg_share, "urdf", "stereo_camera.sdf"]
+    )
     
     # Launch Gazebo
     gz_launch = IncludeLaunchDescription(
@@ -160,6 +163,37 @@ def generate_launch_description():
         output = 'screen',
     )
     nodes.append(spawn_world)
+
+    spawn_camera = Node(
+        package="ros_gz_sim",
+        executable="create",
+        arguments=[
+            "-file", stereo_camera_sdf,
+            "-name", "stereo_camera",
+        ],
+        condition=IfCondition(use_camera),
+        # parameters=[{"use_sim_time": use_sim_time}],
+        output="screen",
+    )
+    nodes.append(spawn_camera)
+
+    attach_camera = ExecuteProcess(
+        cmd=[
+            'ign', 'service',
+            '-s', '/world/default/create_joint',
+            '--reqtype', 'ignition.msgs.Joint',
+            '--reptype', 'ignition.msgs.Boolean',
+            '--timeout', '300',
+            '--req',
+            "name: 'camera_mount' "
+            "parent: 'weeder_robot::camera_link' "
+            "child: 'stereo_camera::camera_sensor_link' "
+            "type: FIXED"
+        ],
+        condition=IfCondition(use_camera),
+        output='screen'
+    )
+    nodes.append(attach_camera)
 
     rviz_config_file = PathJoinSubstitution(
         [FindPackageShare("arm_mazzolini"), "rviz", "second_config.rviz"]
@@ -219,8 +253,8 @@ def generate_launch_description():
         '/camera/left/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
         '/camera/right/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
         # camera_info 
-        '/camera/left/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
-        '/camera/right/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
+        # '/camera/left/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
+        # '/camera/right/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
         # depth & points
         '/camera/depth/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
         '/camera/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked',
@@ -281,6 +315,7 @@ def generate_launch_description():
             'camera_info_topic': '/camera/left/camera_info',
             'use_sim_time': use_sim_time,
         }],
+        condition=IfCondition(use_camera),
         output='screen',
     )
     nodes.append(camera_info_left)
@@ -290,12 +325,13 @@ def generate_launch_description():
         executable='camera_info_publisher',
         name='camera_info_right',
         parameters=[{
-            'camera_name': 'realsense_d435_left',
+            'camera_name': 'realsense_d435_right',
             'camera_info_url': PathJoinSubstitution([pkg_share, 'config', 'camera_info_right.yaml']),
-            'image_topic': '/camera/left/image_raw',
-            'camera_info_topic': '/camera/left/camera_info',
+            'image_topic': '/camera/right/image_raw',
+            'camera_info_topic': '/camera/right/camera_info',
             'use_sim_time': use_sim_time,
         }],
+        condition=IfCondition(use_camera),
         output='screen',
     )
     nodes.append(camera_info_right)

@@ -142,9 +142,9 @@ void GazeboTargetVisualizer::spawn_callback(
 {
     auto response = future.get();
     if (response->success) {
-        RCLCPP_INFO(this->get_logger(), "✅ Target spawned successfully!");
+        RCLCPP_INFO(this->get_logger(), "Target spawned successfully!");
     } else {
-        RCLCPP_ERROR(this->get_logger(), "❌ Failed to spawn target");
+        RCLCPP_ERROR(this->get_logger(), "Failed to spawn target");
     }
 }
 
