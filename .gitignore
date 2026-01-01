@@ -3,6 +3,9 @@ build/
 install/
 log/
 
+# --- Imported files from other programs ---
+data/
+
 # --- CMake / colcon ---
 CMakeFiles/
 CMakeCache.txt
