@@ -36,7 +36,7 @@ class TargetSpawner : public rclcpp::Node
         void laser_callback(const std_msgs::msg::Bool::SharedPtr msg);
 
         // Variables
-        const int spawn_period = 5; // seconds between laser and new target
+        const int spawn_period = 2; // seconds between laser and new target
         const double min_distance = 0.2;
         const double max_distance = 4.0;
         const double angle_range = M_PI / 1.5;

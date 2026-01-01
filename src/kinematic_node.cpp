@@ -2,14 +2,10 @@
 
 using namespace arm_mazzolini;
 
-WeederNode::WeederNode() : Node("weeder_node")
+KinematicNode::KinematicNode() : Node("kinematic_node")
 {
     // Parameters
-    declare_parameters();
-    l1 = this->get_parameter("link1_length").as_double();
-    l2 = this->get_parameter("link2_length").as_double();
-    const auto translation = this->get_parameter("base_frame_transform.translation").as_double_array();
-    const auto rotation = this->get_parameter("base_frame_transform.rotation").as_double_array();
+    declare_and_get_parameters();
 
     // pose initialization
     Eigen::Vector3d t(translation[0], translation[1], translation[2]);
@@ -26,7 +22,7 @@ WeederNode::WeederNode() : Node("weeder_node")
     // Subscribers
     target_sub = this->create_subscription<geometry_msgs::msg::PointStamped>(
         "/target_position", 10,
-        std::bind(&WeederNode::target_callback, this, std::placeholders::_1)
+        std::bind(&KinematicNode::target_callback, this, std::placeholders::_1)
     );
 
     tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -35,7 +31,7 @@ WeederNode::WeederNode() : Node("weeder_node")
         this,
         this->get_clock(),
         rclcpp::Duration(std::chrono::milliseconds(callback_period_ms)), 
-        std::bind(&WeederNode::timer_callback, this)
+        std::bind(&KinematicNode::timer_callback, this)
     );
     last_warning_time = this->now();
 
@@ -49,7 +45,7 @@ WeederNode::WeederNode() : Node("weeder_node")
         RCLCPP_INFO(this->get_logger(), "Shutting down...");
         rclcpp::shutdown();
     }
-    goal_options.result_callback = std::bind(&WeederNode::result_callback, this, std::placeholders::_1);
+    goal_options.result_callback = std::bind(&KinematicNode::result_callback, this, std::placeholders::_1);
     goal_msg.trajectory.joint_names = joint_names;
 
     laser_pub = this->create_publisher<std_msgs::msg::Bool>("/laser_command", 10);
@@ -61,13 +57,24 @@ WeederNode::WeederNode() : Node("weeder_node")
     target_status = TargetStatus::NO_TARGET;
 }
 
-void WeederNode::declare_parameters()
+void KinematicNode::declare_and_get_parameters()
 {
     try {
         this->declare_parameter("link1_length", double());
         this->declare_parameter("link2_length", double());  
         this->declare_parameter("base_frame_transform.translation", std::vector<double>());
         this->declare_parameter("base_frame_transform.rotation", std::vector<double>());
+
+        l1 = this->get_parameter("link1_length").as_double();
+        l2 = this->get_parameter("link2_length").as_double();
+        RCLCPP_INFO(this->get_logger(), "Link lengths: l1 = %.3f, l2 = %.3f", l1, l2);
+        const auto trans_vec = this->get_parameter("base_frame_transform.translation").as_double_array();
+        const auto rot_vec = this->get_parameter("base_frame_transform.rotation").as_double_array();
+
+        for (size_t i = 0; i < 3; ++i) {
+            translation[i] = trans_vec[i];
+            rotation[i] = rot_vec[i];
+        }
     } 
     catch(const rclcpp::exceptions::InvalidParameterTypeException& ex) {
         RCLCPP_ERROR(this->get_logger(), "Error in params declaration: %s", ex.what());
@@ -76,7 +83,7 @@ void WeederNode::declare_parameters()
     }
 }
 
-void WeederNode::timer_callback()
+void KinematicNode::timer_callback()
 {
     // check if transform is available
     if (!tf_buffer->canTransform("odom", "base_link", tf2::TimePointZero)) {
@@ -96,7 +103,7 @@ void WeederNode::timer_callback()
     }
 }
 
-void WeederNode::pose_callback(const geometry_msgs::msg::TransformStamped msg)
+void KinematicNode::pose_callback(const geometry_msgs::msg::TransformStamped msg)
 {
     // ------------------- TODO: What do I do of header? ----------------------
 
@@ -167,7 +174,7 @@ void WeederNode::pose_callback(const geometry_msgs::msg::TransformStamped msg)
 }
 
 
-std::vector<double> WeederNode::compute_ik(const Eigen::Vector3d& position)
+std::vector<double> KinematicNode::compute_ik(const Eigen::Vector3d& position)
 {
     double x = position.x();
     double y = position.y();
@@ -200,20 +207,20 @@ std::vector<double> WeederNode::compute_ik(const Eigen::Vector3d& position)
     }
 }
 
-double WeederNode::normalize_angle(double angle)
+double KinematicNode::normalize_angle(double angle)
 {
     while (angle < -M_PI) angle += 2 * M_PI;
     while (angle > M_PI) angle -= 2 * M_PI;
     return angle;
 }
 
-void WeederNode::target_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
+void KinematicNode::target_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
 {
     tf2::fromMsg(msg->point, target_position);
     target_status = TargetStatus::HAS_TARGET;
 }
 
-void WeederNode::send_joint_trajectory(const std::vector<double>& joint_angles)
+void KinematicNode::send_joint_trajectory(const std::vector<double>& joint_angles)
 {
     goal_msg.trajectory.points.clear();
     trajectory_msgs::msg::JointTrajectoryPoint point;
@@ -225,7 +232,7 @@ void WeederNode::send_joint_trajectory(const std::vector<double>& joint_angles)
     target_status = TargetStatus::ARM_MOVING;
 }
 
-void WeederNode::result_callback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult & result)
+void KinematicNode::result_callback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult & result)
 {
     switch (result.code) {
         case rclcpp_action::ResultCode::SUCCEEDED:
@@ -255,7 +262,7 @@ void WeederNode::result_callback(const rclcpp_action::ClientGoalHandle<control_m
 int main(int argc, char **argv)
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<WeederNode>();
+    auto node = std::make_shared<KinematicNode>();
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

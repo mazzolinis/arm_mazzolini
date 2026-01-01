@@ -23,14 +23,14 @@ joint_trajectory_controller:
       - velocity
     gains:
       joint1:
-        p: 15.0
+        p: 18.0
         i: 0.0
-        d: 1.5
+        d: 1.0
         ff_velocity_scale: 0.0
       joint2:
-        p: 15.0
+        p: 18.0
         i: 0.0
-        d: 1.5
+        d: 1.0
         ff_velocity_scale: 0.0
     # constraints: 
     #   goal_time: 5.0

@@ -23,15 +23,17 @@ namespace arm_mazzolini
 // in this namespace I will add every node actually used in definitive version
 // nodes without this namespace are demos or test nodes
 {
-class WeederNode : public rclcpp::Node
+class KinematicNode : public rclcpp::Node
 {
 public:
-    WeederNode();
+    KinematicNode();
     
 private:
-    // link lengths
+    // Parameters from yaml
     double l1;
     double l2;
+    std::array<double, 3> translation;
+    std::array<double, 3> rotation;
 
     // callback period
     const int callback_period_ms = 100;
@@ -53,7 +55,7 @@ private:
     const double pose_threshold = 1e-3;   
     
     std::vector<std::string> joint_names = {"joint1", "joint2"};
-    void declare_parameters();
+    void declare_and_get_parameters();
     
     // Messages
     control_msgs::action::FollowJointTrajectory::Goal goal_msg;

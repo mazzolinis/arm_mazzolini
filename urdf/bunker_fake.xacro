@@ -134,6 +134,7 @@
         <xacro:bunker_wheel name="rear_right_wheel" pos_x="-${wheel_pos_x}" pos_y="-${wheel_pos_y}"/>
     </xacro:macro>
 
+    <!-- Do not add plugins here -->
     <xacro:macro name="wheel_control" params="name">
         <joint name="${name}_joint">
             <command_interface name="velocity">

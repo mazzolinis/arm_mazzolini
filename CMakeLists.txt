@@ -16,6 +16,7 @@ endif()
 # ==============================================================================
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(control_msgs REQUIRED)
@@ -59,6 +60,7 @@ add_executable(gazebo_target_visualizer src/gazebo_target_visualizer.cpp)
 add_executable(rviz_target_visualizer src/rviz_target_visualizer.cpp)
 add_executable(target_spawner src/target_spawner.cpp)
 add_executable(camera_info_publisher src/camera_info_publisher.cpp)
+
 
 ament_target_dependencies(
   kinematic_node PUBLIC
@@ -108,7 +110,7 @@ install(
 )
 
 install(
-  DIRECTORY launch urdf config rviz meshes worlds models
+  DIRECTORY launch urdf config rviz meshes worlds
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -125,6 +127,16 @@ install(TARGETS target_spawner
   DESTINATION lib/${PROJECT_NAME}
 )
 install(TARGETS camera_info_publisher
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+
+# Python spawner node
+
+ament_python_install_package(${PROJECT_NAME})
+
+install(PROGRAMS
+  arm_mazzolini/simulation_process_spawner.py
   DESTINATION lib/${PROJECT_NAME}
 )
 # ============================================================================== #

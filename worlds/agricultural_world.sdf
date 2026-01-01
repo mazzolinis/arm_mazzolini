@@ -1,12 +1,169 @@
 <?xml version="1.0" ?>
-<sdf version='1.8'>
+<sdf version='1.6'>
   <world name='default'>
+    
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+    <plugin
+      filename="ignition-gazebo-physics-system"
+      name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin
+      filename="ignition-gazebo-sensors-system"
+      name="gz::sim::systems::Sensors">
+      <render_engine>ogre</render_engine>
+    </plugin>
+    <plugin
+      filename="ignition-gazebo-user-commands-system"
+      name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin
+      filename="ignition-gazebo-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
 
-    <light name='sun' type='directional'>
-      <cast_shadows>1</cast_shadows>
-      <pose>0 0 10 0 -0 0</pose>
-      <!-- <diffuse>1.0 1.0 1.0 1</diffuse> -->
-      <diffuse>0.98 0.95 0.9 1</diffuse>
+    <scene>
+      <!-- <ambient>0.6 0.6 0.6 1</ambient> -->
+      <ambient>0.6 0.7 1.0 1</ambient>
+      <!-- <background>0.75 0.85 1.0 1</background> -->
+      <background>0.53 0.81 0.92 1</background>
+      <grid>true</grid>
+      <shadows>true</shadows>
+      <fog>
+        <type>linear</type>
+        <color>0.53 0.81 0.92 1</color> 
+        <density>0.0015</density>       
+        <near>5</near>                  
+        <far>100</far>                 
+      </fog>
+    </scene>
+
+    <gui fullscreen="0">
+
+      <plugin filename="MinimalScene" name="3D View">
+        <ignition-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </ignition-gui>
+
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.4 0.4 0.4</ambient_light>
+        <background_color>0.8 0.8 0.8</background_color>
+        <camera_pose>-6 0 6 0 0.5 0</camera_pose>
+      </plugin>
+
+      <plugin filename="EntityContextMenuPlugin" name="Entity context menu">
+        <ignition-gui>
+          <property key="state" type="string">floating</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </ignition-gui>
+      </plugin>
+      <plugin filename="GzSceneManager" name="Scene Manager">
+        <ignition-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </ignition-gui>
+      </plugin>
+      <plugin filename="InteractiveViewControl" name="Interactive view control">
+        <ignition-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </ignition-gui>
+      </plugin>
+      <plugin filename="CameraTracking" name="Camera Tracking">
+        <ignition-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </ignition-gui>
+      </plugin>
+
+      <plugin filename="WorldControl" name="World control">
+        <ignition-gui>
+          <title>World control</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">72</property>
+          <property type="double" key="width">121</property>
+          <property type="double" key="z">1</property>
+
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="left" target="left"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </ignition-gui>
+
+        <play_pause>true</play_pause>
+        <step>true</step>
+        <start_paused>true</start_paused>
+        <use_event>true</use_event>
+
+      </plugin>
+
+
+      <plugin filename="WorldStats" name="World stats">
+        <ignition-gui>
+          <title>World stats</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">110</property>
+          <property type="double" key="width">290</property>
+          <property type="double" key="z">1</property>
+
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="right" target="right"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </ignition-gui>
+
+        <sim_time>true</sim_time>
+        <real_time>true</real_time>
+        <real_time_factor>true</real_time_factor>
+        <iterations>true</iterations>
+      </plugin>
+
+      <plugin filename="ImageDisplay" name="Image Display">
+        <ignition-gui>
+          <property key="state" type="string">docked</property>
+        </ignition-gui>
+      </plugin>
+
+
+      <plugin filename="ComponentInspector" name="Component inspector">
+        <ignition-gui>
+          <property type="string" key="state">docked</property>
+        </ignition-gui>
+      </plugin>
+
+
+      <plugin filename="EntityTree" name="Entity tree">
+        <ignition-gui>
+          <property type="string" key="state">docked</property>
+        </ignition-gui>
+      </plugin>
+    </gui>
+    
+    <light name="sun" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>1.0 1.0 1.0 1</diffuse>
+      <!-- <diffuse>0.98 0.95 0.9 1</diffuse> -->
       <specular>0.2 0.2 0.2 1</specular>
       <attenuation>
         <range>1000</range>
@@ -17,44 +174,41 @@
       <direction>-0.5 0.5 -1.0</direction>
     </light>
 
-    <physics type='ode'>
-      <max_step_size>0.001</max_step_size>
-      <real_time_factor>1</real_time_factor>
-      <real_time_update_rate>1000</real_time_update_rate>
-      <gravity>0 0 -9.8</gravity>
-    </physics>
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>100 100</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.6 0.6 0.6 1</ambient>
+            <diffuse>0.6 0.6 0.6 1</diffuse>
+            <specular>0.1 0.1 0.1 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
 
-    <scene>
-      <!-- <ambient>1 1 1 1</ambient> -->
-      <ambient>0.2 0.2 0.2 1</ambient>
-      <!-- <background>1 1 1 1</background> -->
-      <background>0.53 0.81 0.92 1</background>
-      <shadows>1</shadows>
-      <sky>
-        <clouds>
-          <speed>12</speed>
-        </clouds>
-      </sky>
-    </scene>
-    
     <!-- Origin placed near the Big Red Barn near Stonewall, MB, Canada -->
-    <spherical_coordinates>
+    <!-- <spherical_coordinates>
       <surface_model>EARTH_WGS84</surface_model>
       <latitude_deg>50.109461</latitude_deg>
       <longitude_deg>-97.318978</longitude_deg>
       <elevation>250</elevation>
       <heading_deg>0</heading_deg>
-    </spherical_coordinates>
-    <state world_name='default'>
-      <sim_time>35 515000000</sim_time>
-      <real_time>35 905493128</real_time>
-      <wall_time>1495129402 253586127</wall_time>
-    </state>
-    <gui fullscreen='0'>
-      <camera name='user_camera'>
-        <pose>39.6939 0.0 20.0 0 0.275643 3.14159</pose>
-        <view_controller>orbit</view_controller>
-      </camera>
-    </gui>
+    </spherical_coordinates> -->
+
   </world>
 </sdf>

@@ -7,18 +7,20 @@
     <xacro:arg name= "is_light" default="true"/>
     <xacro:arg name= "controller_yaml" default=""/>
     <xacro:arg name= "use_camera" default="false"/>
+    <xacro:arg name= "use_sim_time" default="true"/>
 
-    <xacro:macro name="weeder_robot" params="is_light use_camera controller_yaml">
+    <xacro:macro name="weeder_robot" params="is_light use_camera controller_yaml use_sim_time">
 
         <!-- Including base and arm xacro files -->
         <xacro:include filename="$(find arm_mazzolini)/urdf/bunker_fake.xacro"/>
         <xacro:include filename="$(find arm_mazzolini)/urdf/arm.xacro"/>
+        <xacro:include filename="$(find arm_mazzolini)/urdf/camera.xacro"/>
         
         <!-- Create base -->
         <xacro:bunker_fake/>
 
         <!-- Create robotic arm -->
-        <xacro:arm is_light="${is_light}" use_camera="${use_camera}"/>
+        <xacro:arm is_light="${is_light}"/>
 
         <!-- Create weeder robot by connecting base and arm -->
         <!-- Fixed joint connecting base_link and arm_base_link -->
@@ -27,6 +29,11 @@
             <child link="arm_base_link"/>
             <origin xyz="0 -0.3 0.28" rpy="0 0 -${PI/2}"/>
         </joint>
+
+        <!-- Include depth camera if requested -->
+        <xacro:if value="${use_camera}">
+            <xacro:depth_camera is_light="${is_light}" use_sim_time="${use_sim_time}"/>
+        </xacro:if>
 
         <!-- Ros2 Control -->
         <ros2_control name="weeder_controller" type="system">
@@ -41,6 +48,7 @@
             <xacro:wheel_control name="rear_right_wheel"/>
         </ros2_control>
         <!-- Gazebo Plugins -->
+        <!-- TODO: Change plugins if changing Gazebo version -->
         <gazebo>
             <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
                 <robot_param>robot_description</robot_param>
@@ -58,6 +66,6 @@
     </xacro:macro>
 
 
-    <xacro:weeder_robot is_light="$(arg is_light)" use_camera="$(arg use_camera)" controller_yaml="$(arg controller_yaml)"/>
+    <xacro:weeder_robot is_light="$(arg is_light)" use_camera="$(arg use_camera)" controller_yaml="$(arg controller_yaml)" use_sim_time="$(arg use_sim_time)"/>
 
 </robot>

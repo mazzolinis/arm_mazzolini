@@ -1,0 +1,122 @@
+<?xml version="1.0"?>
+<robot name="weeder_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- Camera parameters -->
+    <xacro:property name="PI" value="3.141592" />
+    <xacro:property name="baseline" value="0.05" />
+    <xacro:property name="width" value="1280" />
+    <xacro:property name="height" value="720" />
+    <xacro:property name="fps" value="30" />
+    <xacro:property name="hfov" value="${PI/3}" />
+    <xacro:property name="name_prefix" value="/camera" />
+
+    <xacro:macro name="depth_camera" params= "is_light use_sim_time">
+
+        <link name="camera_link">
+            <visual>
+                <geometry>
+                    <mesh filename="${camera_mesh}" scale="${scale}"/>
+                </geometry>
+                <material name="grey">
+                    <color rgba="0.6 0.6 0.6 1"/>
+                </material>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${camera_mesh}" scale="${scale}"/>
+                </geometry>
+                <origin xyz="0 0 -0.07" rpy="0 0 0"/>
+            </collision>
+            <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <mass value="0.072"/>
+                <inertia ixx="0.000005"   ixy="0.0"           ixz="0.00000"
+                                            iyy="0.000005"    iyz="0.0"
+                                                                izz="0.000005"
+                />
+            </inertial>
+        </link>
+    
+        <joint name="camera_joint" type="fixed">
+            <xacro:unless value="${is_light}">
+                <parent link="link2_heavy"/>
+            </xacro:unless>
+            <xacro:if value="${is_light}">
+                <parent link="link2_light"/>
+            </xacro:if>
+            <child link="camera_link"/>
+            <origin xyz="${l2/2} 0 ${-h2-0.03}" rpy="${PI+PI/9} 0 ${-PI/2}"/>
+        </joint>
+
+        <link name="camera_optical_frame"/>
+        
+        <xacro:if value="${use_sim_time}">
+            <!-- this joint rotates camera because Gazebo uses YZ plane instead of XY -->
+            <joint name="camera_optical_joint" type="fixed">
+                <parent link="camera_link"/>
+                <child link="camera_optical_frame"/>
+                <origin xyz="0 0 0.07" rpy="${PI/2} ${-PI/2} 0"/>
+            </joint>
+        </xacro:if>
+
+        <xacro:unless value="${use_sim_time}">
+            <joint name="camera_optical_joint" type="fixed">
+                <parent link="camera_link"/>
+                <child link="camera_optical_frame"/>
+                <origin xyz="0 0 0.07" rpy="0 0 0"/>
+            </joint>
+        </xacro:unless>
+
+        <gazebo reference="camera_optical_frame">
+            <sensor name="rgbd_camera" type="rgbd_camera">
+                <ignition_frame_id>camera_optical_frame</ignition_frame_id>
+                <camera name="rgbd_camera">
+                <horizontal_fov>${hfov}</horizontal_fov>
+                <lens>
+                    <intrinsics>
+                    <fx>277.1</fx>
+                    <fy>277.1</fy>
+                    <cx>160.5</cx>
+                    <cy>120.5</cy>
+                    <s>0</s>
+                    </intrinsics>
+                </lens>
+                <distortion>
+                    <k1>0.104207</k1>
+                    <k2>-0.255558</k2>
+                    <k3>0.128694</k3>
+                    <p1>0.000512</p1>
+                    <p2>0.000319</p2>
+                    <center>0.5 0.5</center>
+                </distortion>
+                <image>
+                    <width>${width}</width>
+                    <height>${height}</height>
+                    <format>L8</format>
+                </image>
+                <clip>
+                    <near>0.01</near>
+                    <far>30</far>
+                </clip>
+                <depth_camera>
+                    <clip>
+                    <near>0.1</near>
+                    <far>10</far>
+                    </clip>
+                </depth_camera>
+                <noise>
+                    <type>gaussian</type>
+                    <mean>0</mean>
+                    <stddev>0.003</stddev>
+                </noise>
+                </camera>
+                <always_on>1</always_on>
+                <update_rate>10</update_rate>
+                <visualize>0</visualize>
+                <topic>/camera/d435/image_raw</topic>
+            </sensor>
+        </gazebo>
+
+    </xacro:macro>
+</robot>
