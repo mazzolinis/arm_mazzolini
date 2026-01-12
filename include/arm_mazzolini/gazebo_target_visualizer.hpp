@@ -26,4 +26,5 @@ private:
     void clear_callback(const std_msgs::msg::Bool::SharedPtr msg);
     void delete_current_target();
     void spawn_callback(const rclcpp::Client<ros_gz_interfaces::srv::SpawnEntity>::SharedFuture future);
+    void delete_callback(const rclcpp::Client<ros_gz_interfaces::srv::DeleteEntity>::SharedFuture future);
 };

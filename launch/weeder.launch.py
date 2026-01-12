@@ -69,25 +69,15 @@ def generate_launch_description():
 
     robot_name = "weeder_robot"
     
-    # ================================================
-    # TODO: Find a way to select controller at runtime
-    # ================================================
-
-    # Select controller at runtime (different PD gains for each arm)
-    # if is_light == 'true':
-    #     controller = 'weeder_controller_light.yaml'
-    # else:
-    #     controller = 'weeder_controller_heavy.yaml'
-    
     controller = PythonExpression([
         "'weeder_controller_light.yaml' if '", is_light, "' == 'true' else 'weeder_controller_heavy.yaml'"
-    ])
-
-    # controller = 'weeder_controller_light.yaml'  # For now, only light version is used
+    ]) # This works
     
     controller_config_file = PathJoinSubstitution(
         [pkg_share, "config", controller],
     )
+
+    camera_config_file = PathJoinSubstitution([pkg_share, "config", "simulated_D435_parameters.yaml"])
 
     robot_description_content = Command(
         [
@@ -184,15 +174,9 @@ def generate_launch_description():
         '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
         '/world/default/create@ros_gz_interfaces/srv/SpawnEntity',
         '/world/default/remove@ros_gz_interfaces/srv/DeleteEntity',
-        # left/right images
-        # '/camera/left/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
-        # '/camera/right/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
-        # # camera_info 
-        # # '/camera/left/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
-        # # '/camera/right/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo',
-        # # depth & points
-        # '/camera/depth/image_raw@sensor_msgs/msg/Image@gz.msgs.Image',
-        # '/camera/points@sensor_msgs/msg/PointCloud2@gz.msgs.PointCloudPacked',
+        # '/simulated_D435/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo', # Should I use it?
+        '/simulated_D435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
+        '/simulated_D435/image@sensor_msgs/msg/Image[gz.msgs.Image',
         ],
         condition=IfCondition(use_sim_time),
         output='screen'
@@ -218,38 +202,6 @@ def generate_launch_description():
     # )
     # nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[rviz_target_visualizer])])))
 
-    # camera_info_left = Node(
-    #     package='arm_mazzolini',
-    #     executable='camera_info_publisher',
-    #     name='camera_info_left',
-    #     parameters=[{
-    #         'camera_name': 'realsense_d435_left',
-    #         'camera_info_url': PathJoinSubstitution([pkg_share, 'config', 'camera_info_left.yaml']),
-    #         'image_topic': '/camera/left/image_raw',
-    #         'camera_info_topic': '/camera/left/camera_info',
-    #         'use_sim_time': use_sim_time,
-    #     }],
-    #     condition=IfCondition(use_camera),
-    #     output='screen',
-    # )
-    # nodes.append(camera_info_left)
-
-    # camera_info_right = Node(
-    #     package='arm_mazzolini',
-    #     executable='camera_info_publisher',
-    #     name='camera_info_right',
-    #     parameters=[{
-    #         'camera_name': 'realsense_d435_right',
-    #         'camera_info_url': PathJoinSubstitution([pkg_share, 'config', 'camera_info_right.yaml']),
-    #         'image_topic': '/camera/right/image_raw',
-    #         'camera_info_topic': '/camera/right/camera_info',
-    #         'use_sim_time': use_sim_time,
-    #     }],
-    #     condition=IfCondition(use_camera),
-    #     output='screen',
-    # )
-    # nodes.append(camera_info_right)
-
     # This node spawns controllers (diff drive, joint trajectory), kinematic node and target spawner when simulation starts
     simulation_spawner = Node(
         package='arm_mazzolini',
@@ -264,6 +216,74 @@ def generate_launch_description():
         output='screen',
     )
     nodes.append(simulation_spawner)
+
+    camera_info_publisher = Node(
+        package="arm_mazzolini",
+        executable="camera_info_publisher",
+        name="camera_info_publisher",
+        parameters=[
+            {"camera_name": "simulated_D435"}, # TODO: change this, it has to match the name in the yaml file, not a good practice
+            {"camera_config_file": camera_config_file},
+            {"image_topic": "/simulated_D435/image"},
+            {"camera_info_topic": "/simulated_D435/camera_info"},
+            {"use_sim_time": use_sim_time},
+        ],
+        condition = IfCondition(
+            PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
+        ),
+    )
+    nodes.append(camera_info_publisher)
+
+    rgb_rectify = Node(
+        package="image_proc",
+        executable="rectify_node",
+        namespace="simulated_D435",
+        name="rgb_rectify_node",
+        remappings=[
+            ("image", "/simulated_D435/image"),
+            ("camera_info", "/simulated_D435/camera_info"), # TODO: change names to parameters, less space for error
+        ],
+        parameters=[{"use_sim_time": use_sim_time}],
+        condition = IfCondition(
+            PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
+        )
+    )
+    nodes.append(rgb_rectify)
+
+    # TODO: depth/rectify non esiste. Devo usare qualcos'altro oppure è automatico?
+    # depth_rectify = Node(
+    #     package="depth_image_proc",
+    #     executable="rectify",
+    #     namespace="simulated_D435",
+    #     remappings=[
+    #         ("image", "/simulated_D435/depth_image"),
+    #         ("camera_info", "/simulated_D435/camera_info"),
+    #     ],
+    #     parameters=[{"use_sim_time": use_sim_time}],
+    #     condition = IfCondition(
+    #         PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
+    #     )
+    # )
+    # nodes.append(depth_rectify)
+
+
+    # Create point cloud from depth image (is this necessary?)
+    point_cloud_node = Node(
+        package="depth_image_proc",
+        executable="point_cloud_xyzrgb_node",
+        namespace="simulated_D435",
+        remappings=[
+            ("rgb/image_rect", "/simulated_D435/image_rect"),
+            ("rgb/camera_info", "/simulated_D435/camera_info"),
+            ("depth/image", "/simulated_D435/depth_image"),
+            ("points", "/simulated_D435/points"),
+        ],
+        parameters=[{"use_sim_time": use_sim_time}],
+        condition = IfCondition(
+            PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
+        )
+    )
+    nodes.append(point_cloud_node)
 
 
     return LaunchDescription(declared_arguments + [gz_launch] + nodes)

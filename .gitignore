@@ -6,6 +6,10 @@ log/
 # --- Imported files from other programs ---
 data/
 
+# --- Work in progress ---
+to_do/
+
+
 # --- CMake / colcon ---
 CMakeFiles/
 CMakeCache.txt

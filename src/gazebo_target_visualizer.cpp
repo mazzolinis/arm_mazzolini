@@ -46,11 +46,12 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z);
   xml += R"( 0 0 0</pose>
       <link name="link">
-        <gravity>false</gravity>  <!-- Disable gravity for this object -->
-        
-        <!-- VISUAL (what you see) -->
+        <!-- Disable gravity for this object -->
+        <gravity>false</gravity>  
+
+        <!-- VISUAL -->
         <visual name="visual">
-          <geometry><sphere><radius>0.03</radius></sphere></geometry>
+          <geometry><sphere><radius>0.01</radius></sphere></geometry>
           <material>
             <ambient>1 0 0 1</ambient>
             <diffuse>1 0 0 1</diffuse>
@@ -65,7 +66,7 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
           <surface>
             <contact>
               <ode>
-                <min_depth>0.01</min_depth>
+                <min_depth>0.001</min_depth>
                 <max_vel>0.0</max_vel>
               </ode>
             </contact>
@@ -106,6 +107,7 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
 
 void GazeboTargetVisualizer::clear_callback(const std_msgs::msg::Bool::SharedPtr msg)
 {
+  RCLCPP_INFO_STREAM(this->get_logger(), "Clear target message received: " << std::to_string(msg->data));
   if (msg->data == true)
     {
       delete_current_target();
@@ -120,7 +122,7 @@ void GazeboTargetVisualizer::clear_callback(const std_msgs::msg::Bool::SharedPtr
 void GazeboTargetVisualizer::delete_current_target()
 {
   if (current_target_name_.empty()) {
-    // RCLCPP_WARN(this->get_logger(), "No current target to delete.");
+    RCLCPP_WARN(this->get_logger(), "No current target to delete.");
     return;
   }
   else if (!delete_client_->wait_for_service(wait_time)) {
@@ -132,19 +134,30 @@ void GazeboTargetVisualizer::delete_current_target()
     request->entity.name = current_target_name_;
     request->entity.type = ros_gz_interfaces::msg::Entity::MODEL;
     
-    delete_client_->async_send_request(request);
+    auto future = delete_client_->async_send_request(request, 
+      std::bind(&GazeboTargetVisualizer::delete_callback, this, std::placeholders::_1)
+      );
     current_target_name_.clear();
   }
 }
 
-void GazeboTargetVisualizer::spawn_callback(
-    rclcpp::Client<ros_gz_interfaces::srv::SpawnEntity>::SharedFuture future)
+void GazeboTargetVisualizer::spawn_callback(rclcpp::Client<ros_gz_interfaces::srv::SpawnEntity>::SharedFuture future)
 {
     auto response = future.get();
     if (response->success) {
         RCLCPP_INFO(this->get_logger(), "Target spawned successfully!");
     } else {
         RCLCPP_ERROR(this->get_logger(), "Failed to spawn target");
+    }
+}
+
+void GazeboTargetVisualizer::delete_callback(rclcpp::Client<ros_gz_interfaces::srv::DeleteEntity>::SharedFuture future)
+{
+    auto response = future.get();
+    if (response->success) {
+        RCLCPP_INFO(this->get_logger(), "Target deleted successfully!");
+    } else {
+        RCLCPP_ERROR(this->get_logger(), "Failed to delete target");
     }
 }
 

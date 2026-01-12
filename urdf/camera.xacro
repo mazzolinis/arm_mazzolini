@@ -8,8 +8,9 @@
     <xacro:property name="height" value="720" />
     <xacro:property name="fps" value="30" />
     <xacro:property name="hfov" value="${PI/3}" />
-    <xacro:property name="name_prefix" value="/camera" />
+    <xacro:property name="name_prefix" value="/simulated_D435" />
 
+    <!-- TODO: This file is valid only in simulation, change use_sim_time if condition -->
     <xacro:macro name="depth_camera" params= "is_light use_sim_time">
 
         <link name="camera_link">
@@ -75,10 +76,10 @@
                 <horizontal_fov>${hfov}</horizontal_fov>
                 <lens>
                     <intrinsics>
-                    <fx>277.1</fx>
-                    <fy>277.1</fy>
-                    <cx>160.5</cx>
-                    <cy>120.5</cy>
+                    <fx>1108.4</fx>
+                    <fy>831.3</fy>
+                    <cx>640</cx>
+                    <cy>360</cy>
                     <s>0</s>
                     </intrinsics>
                 </lens>
@@ -97,24 +98,24 @@
                 </image>
                 <clip>
                     <near>0.01</near>
-                    <far>30</far>
+                    <far>30.0</far>
                 </clip>
                 <depth_camera>
                     <clip>
                     <near>0.1</near>
-                    <far>10</far>
+                    <far>10.0</far>
                     </clip>
                 </depth_camera>
                 <noise>
                     <type>gaussian</type>
-                    <mean>0</mean>
+                    <mean>0.0</mean>
                     <stddev>0.003</stddev>
                 </noise>
                 </camera>
                 <always_on>1</always_on>
-                <update_rate>10</update_rate>
+                <update_rate>30</update_rate>
                 <visualize>0</visualize>
-                <topic>/camera/d435/image_raw</topic>
+                <topic>${name_prefix}</topic>
             </sensor>
         </gazebo>
 
