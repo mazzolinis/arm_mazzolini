@@ -51,7 +51,7 @@ KinematicNode::KinematicNode() : Node("kinematic_node")
     laser_pub = this->create_publisher<std_msgs::msg::Bool>("/laser_command", 10);
 
     // Initial arm position
-    std::vector<double> initial_joint_positions = {-M_PI/4, M_PI/4};
+    std::vector<double> initial_joint_positions = {-M_PI/4, M_PI/2};
     send_joint_trajectory(initial_joint_positions);
     // Initial status
     target_status = TargetStatus::NO_TARGET;
