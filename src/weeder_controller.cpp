@@ -61,8 +61,6 @@ namespace arm_mazzolini
             this->declare_parameter("link1_length", double());
             this->declare_parameter("link2_length", double());  
             this->declare_parameter("tf_callback_period", int());
-            this->declare_parameter("base_frame_transform.translation", std::vector<double>());
-            this->declare_parameter("base_frame_transform.rotation", std::vector<double>());
             this->declare_parameter("image_buffer_size", int());
             this->declare_parameter("frames_delay", int());
             this->declare_parameter("camera_rgb_topic", std::string());
@@ -82,14 +80,16 @@ namespace arm_mazzolini
             camera_info_topic = this->get_parameter("camera_info_topic").as_string();
 
             // ========================== Forse questi non servono più ============================================
-            RCLCPP_INFO(this->get_logger(), "Link lengths: l1 = %.3f, l2 = %.3f", l1, l2);
-            const auto trans_vec = this->get_parameter("base_frame_transform.translation").as_double_array();
-            const auto rot_vec = this->get_parameter("base_frame_transform.rotation").as_double_array();
+            // this->declare_parameter("base_frame_transform.translation", std::vector<double>());
+            // this->declare_parameter("base_frame_transform.rotation", std::vector<double>());
+            // RCLCPP_INFO(this->get_logger(), "Link lengths: l1 = %.3f, l2 = %.3f", l1, l2);
+            // const auto trans_vec = this->get_parameter("base_frame_transform.translation").as_double_array();
+            // const auto rot_vec = this->get_parameter("base_frame_transform.rotation").as_double_array();
 
-            for (size_t i = 0; i < 3; ++i) {
-                translation[i] = trans_vec[i];
-                rotation[i] = rot_vec[i];
-            }
+            // for (size_t i = 0; i < 3; ++i) {
+            //     translation[i] = trans_vec[i];
+            //     rotation[i] = rot_vec[i];
+            // }
         } 
         catch(const rclcpp::exceptions::InvalidParameterTypeException& ex) {
             RCLCPP_ERROR(this->get_logger(), "Error in params declaration: %s", ex.what());
@@ -332,6 +332,5 @@ namespace arm_mazzolini
         }
 
     }
+} // namespace arm mazzolini
 
-
-}

@@ -12,7 +12,7 @@ namespace arm_mazzolini {
     bool ArmKinematic::computeIK(const Eigen::Vector3d& position, std::vector<double> theta, ErrorType& error_type)
     {
         if(theta.empty()) {
-            error_type = ErrorType::EXCLUSION_ZONE;
+            error_type = ErrorType::TARGET_EMPTY;
             return false;
         }
         double x = position.x();

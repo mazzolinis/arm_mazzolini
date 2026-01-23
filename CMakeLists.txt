@@ -52,6 +52,16 @@ set(PROJECT_DEPENDENCIES
 )
 
 # ==============================================================================
+#                                    LIBRARY
+# ==============================================================================
+
+add_library($(PROJECT_NAME)   SHARED  src/arm_kinematic.cpp
+                                      src/sphere_detector.cpp
+) 
+ament_export_include_directories(include)
+ament_export_libraries(${PROJECT_NAME})
+
+# ==============================================================================
 #                                   ADD NODES                                   
 # ==============================================================================
 
@@ -60,6 +70,7 @@ add_executable(gazebo_target_visualizer src/gazebo_target_visualizer.cpp)
 add_executable(rviz_target_visualizer src/rviz_target_visualizer.cpp)
 add_executable(target_spawner src/target_spawner.cpp)
 add_executable(camera_info_publisher src/camera_info_publisher.cpp)
+add_executable(weeder_controller src/weeder_controller.cpp)
 
 
 ament_target_dependencies(
@@ -82,6 +93,11 @@ ament_target_dependencies(
   camera_info_publisher PUBLIC
   ${PROJECT_DEPENDENCIES}
 )
+ament_target_dependencies(
+  weeder_controller PUBLIC
+  ${PROJECT_DEPENDENCIES}
+)
+target_link_libraries(weeder_controller ${PROJECT_NAME})
 
 target_include_directories(kinematic_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -103,12 +119,15 @@ target_include_directories(camera_info_publisher PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
+target_include_directories(weeder_controller PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
 
 install(
   DIRECTORY include
   DESTINATION include
 )
-
 install(
   DIRECTORY launch urdf config rviz meshes worlds
   DESTINATION share/${PROJECT_NAME}
@@ -129,7 +148,9 @@ install(TARGETS target_spawner
 install(TARGETS camera_info_publisher
   DESTINATION lib/${PROJECT_NAME}
 )
-
+install(TARGETS weeder_controller
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 # Python spawner node
 

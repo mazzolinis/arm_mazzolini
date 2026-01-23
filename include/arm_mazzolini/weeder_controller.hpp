@@ -55,8 +55,7 @@ namespace arm_mazzolini
         ControllerStatus controller_status;
 
         // Image parameters
-        Eigen::Vector3d target_position;
-        // Eigen::Vector3d target_relative_position; // relative to the camera
+        Eigen::Vector3d target_position; // x, y, z position of the target in arm_base_link frame
         std::vector<Eigen::Vector3d> target_buffer;
         size_t image_buffer_size;
         int frames_delay;
