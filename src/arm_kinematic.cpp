@@ -2,24 +2,31 @@
 
 namespace arm_mazzolini {
 
-    armKinematic::armKinematic(double l1, double l2)
+    ArmKinematic::ArmKinematic(double l1, double l2)
         : l1_(l1), l2_(l2)
     {
         // Do somenthing here?
     }
 
-    // TODO: add elbow up and check if position is reachable
-    int armKinematic::computeIK(const Eigen::Vector3d& position, std::vector<double> theta)
+    // TODO: add elbow up and exclusion zones
+    bool ArmKinematic::computeIK(const Eigen::Vector3d& position, std::vector<double> theta, ErrorType& error_type)
     {
+        if(theta.empty()) {
+            error_type = ErrorType::EXCLUSION_ZONE;
+            return false;
+        }
         double x = position.x();
         double y = position.y();
         double r = std::sqrt(x*x + y*y);
 
         // Check for errors
-        if (r > (l1_+l2_) || r < std::abs(l1_-l2_)) {
-            // RCLCPP_ERROR(this->get_logger(), "Target position is out of reach, check previous computations.");
-            // cannot print error here, no access to rclcpp
-            return -1;
+        if (x < 0) {
+            error_type = ErrorType::EXCLUSION_ZONE;
+            return false;
+        }
+        else if (r > (l1_+l2_) || r < std::abs(l1_-l2_)) {
+            error_type = ErrorType::TARGET_TOO_FAR;
+            return false;
         }
         else {
             double cos_theta2 = (r*r - l1_*l1_ - l2_*l2_) / (2*l1_*l2_);
@@ -40,11 +47,11 @@ namespace arm_mazzolini {
             theta2 = normalizeAngle(theta2);
             theta = {theta1, theta2};
 
-            return 0;
+            return true;
         }
     }
 
-    double armKinematic::normalizeAngle(double angle)
+    double ArmKinematic::normalizeAngle(double angle)
     {
         while (angle < -M_PI) angle += 2 * M_PI;
         while (angle > M_PI) angle -= 2 * M_PI;

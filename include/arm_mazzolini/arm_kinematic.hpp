@@ -6,14 +6,15 @@
 #include <cmath>
 #include <vector>
 #include <string>
+#include "arm_mazzolini/error_type.hpp"
 
 namespace arm_mazzolini {
     
-    class armKinematic
+    class ArmKinematic
     {
     public:
-        armKinematic(double l1, double l2);
-        int computeIK(const Eigen::Vector3d& position,std::vector<double> theta);
+        ArmKinematic(double l1, double l2);
+        bool computeIK(const Eigen::Vector3d& position,std::vector<double> theta, ErrorType& error_type);
         double normalizeAngle(double angle);
 
         private:

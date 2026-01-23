@@ -121,7 +121,7 @@ void KinematicNode::pose_callback(const geometry_msgs::msg::TransformStamped msg
             double r = std::sqrt(relative_position.x()*relative_position.x() + relative_position.y()*relative_position.y());
 
             if (r > (l1+l2)) {
-                if((this->now() - last_warning_time).seconds() > warning_period ) {
+                if((this->now() - last_warning_time).seconds() > warning_period) {
                     RCLCPP_INFO(this->get_logger(), "Get closer, target out of reach.");
                     RCLCPP_INFO_STREAM(this->get_logger(), "Target: (" << target_position.x() << "," << target_position.y() 
                         << "), Arm: (" << new_pose.translation().x() << "," << new_pose.translation().y() 

@@ -28,12 +28,10 @@ public:
     // Needed QoS for Gazebo 
     auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
 
-    ci_pub_ =
-      this->create_publisher<sensor_msgs::msg::CameraInfo>(
+    ci_pub_ = this->create_publisher<sensor_msgs::msg::CameraInfo>(
         camera_info_topic_, qos);
 
-    img_sub_ =
-      this->create_subscription<sensor_msgs::msg::Image>(
+    img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
         image_topic_,
         qos,
         std::bind(&CameraInfoPublisher::imageCallback, this, std::placeholders::_1));

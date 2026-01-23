@@ -267,23 +267,23 @@ def generate_launch_description():
     # nodes.append(depth_rectify)
 
 
-    # Create point cloud from depth image (is this necessary?)
-    point_cloud_node = Node(
-        package="depth_image_proc",
-        executable="point_cloud_xyzrgb_node",
-        namespace="simulated_D435",
-        remappings=[
-            ("rgb/image_rect", "/simulated_D435/image_rect"),
-            ("rgb/camera_info", "/simulated_D435/camera_info"),
-            ("depth/image", "/simulated_D435/depth_image"),
-            ("points", "/simulated_D435/points"),
-        ],
-        parameters=[{"use_sim_time": use_sim_time}],
-        condition = IfCondition(
-            PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
-        )
-    )
-    nodes.append(point_cloud_node)
+    # # Create point cloud from depth image (is this necessary?)
+    # point_cloud_node = Node(
+    #     package="depth_image_proc",
+    #     executable="point_cloud_xyzrgb_node",
+    #     namespace="simulated_D435",
+    #     remappings=[
+    #         ("rgb/image_rect", "/simulated_D435/image_rect"),
+    #         ("rgb/camera_info", "/simulated_D435/camera_info"),
+    #         ("depth/image", "/simulated_D435/depth_image"),
+    #         ("points", "/simulated_D435/points"),
+    #     ],
+    #     parameters=[{"use_sim_time": use_sim_time}],
+    #     condition = IfCondition(
+    #         PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
+    #     )
+    # )
+    # nodes.append(point_cloud_node)
 
 
     return LaunchDescription(declared_arguments + [gz_launch] + nodes)

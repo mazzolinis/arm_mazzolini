@@ -11,8 +11,8 @@ namespace arm_mazzolini
     }
 
     bool SphereDetector::DetectSphere(
-        const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
-        const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
+        const sensor_msgs::msg::Image::SharedPtr &rgb_msg,
+        const sensor_msgs::msg::Image::SharedPtr &depth_msg,
         Eigen::Vector3d &center_position)
     {
 
