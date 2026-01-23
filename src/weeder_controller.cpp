@@ -168,18 +168,18 @@ namespace arm_mazzolini
 
             case ControllerStatus::ARM_MOVING:
             {
-                return;
+                break;
             }
 
             case ControllerStatus::POSITIONING:
             {
                 // TODO: passare a 2 1/2 D
-                return;
+                break;
             }
 
             case ControllerStatus::LASERING:
             {
-                return;
+                break;
             }
         }
 
@@ -277,7 +277,6 @@ namespace arm_mazzolini
                     RCLCPP_INFO(this->get_logger(), "Mobile robot moved during POSITIONING");
                     // TODO: abort arm movement
                 }
-
                 break;
             }
 
@@ -286,7 +285,6 @@ namespace arm_mazzolini
                 if (!new_pose.isApprox(old_pose, pose_threshold)) {
                     // TODO: cosa si fa qui? è troppo sensibile
                 }
-
                 break;
             }
 
@@ -334,3 +332,11 @@ namespace arm_mazzolini
     }
 } // namespace arm mazzolini
 
+int main(int argc, char* argv[])
+{
+    rclcpp::init(argc, argv);
+    auto node = std::make_shared<arm_mazzolini::WeederController>();
+    rclcpp::spin(node);
+    rclcpp::shutdown;
+    return 0;
+}

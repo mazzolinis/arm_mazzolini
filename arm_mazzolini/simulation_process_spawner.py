@@ -184,17 +184,17 @@ class SimulationProcessSpawner(Node):
             )
         )
 
-        #  kinematic node
-        targets.append(
-            SpawnTarget(
-                name='kinematic_node',
-                package='arm_mazzolini',
-                executable='kinematic_node',
-                extra_args=[],
-                params_file=self.controller_yaml,
-                delay=1.0
-            )
-        )
+        #  kinematic node (disabilitato se si usa la camera)
+        # targets.append(
+        #     SpawnTarget(
+        #         name='kinematic_node',
+        #         package='arm_mazzolini',
+        #         executable='kinematic_node',
+        #         extra_args=[],
+        #         params_file=self.controller_yaml,
+        #         delay=1.0
+        #     )
+        # )
 
         # target spawner
         targets.append(

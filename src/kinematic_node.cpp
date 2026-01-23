@@ -48,7 +48,8 @@ KinematicNode::KinematicNode() : Node("kinematic_node")
     goal_options.result_callback = std::bind(&KinematicNode::result_callback, this, std::placeholders::_1);
     goal_msg.trajectory.joint_names = joint_names;
 
-    laser_pub = this->create_publisher<std_msgs::msg::Bool>("/laser_command", 10);
+    // TODO: cambiare questa parte
+    // laser_pub = this->create_publisher<std_msgs::msg::Bool>("/laser_command", 10);
 
     // Initial arm position
     std::vector<double> initial_joint_positions = {-M_PI/4, M_PI/2};
@@ -240,9 +241,9 @@ void KinematicNode::result_callback(const rclcpp_action::ClientGoalHandle<contro
             RCLCPP_INFO(this->get_logger(), "BYE BYE PLANT!");
 
             target_status = TargetStatus::LASERING; // TODO: check what to do in LASERING status
-            std_msgs::msg::Bool bool_msg;
-            bool_msg.data = true;
-            laser_pub->publish(bool_msg);
+            // std_msgs::msg::Bool bool_msg;
+            // bool_msg.data = true;
+            // laser_pub->publish(bool_msg);
             target_status = TargetStatus::NO_TARGET;
             return;
         }

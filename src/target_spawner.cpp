@@ -14,11 +14,20 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
         world_height = 2.0;
     }
 
+    // Publishers
     target_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("/target_position", 10);
-    laser_sub = this->create_subscription<std_msgs::msg::Bool>(
-        "/laser_command", 10,
-        std::bind(&TargetSpawner::laser_callback, this, std::placeholders::_1)
+    // laser_sub = this->create_subscription<std_msgs::msg::Bool>(
+    //     "/laser_command", 10,
+    //     std::bind(&TargetSpawner::laser_callback, this, std::placeholders::_1)
+    // );
+    clear_pub = this->create_publisher<std_msgs::msg::Bool>("/clear_target",10);
+
+    // Subscriber
+    laser_position_sub = this->create_subscription<geometry_msgs::msg::Point>(
+        "/lasered_position",10, std::bind(&TargetSpawner::laser_callback, this, std::placeholders::_1)
     );
+
+    // TF
     tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
     timer = rclcpp::create_timer(
@@ -27,27 +36,21 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
         rclcpp::Duration(std::chrono::seconds(spawn_period)), 
         std::bind(&TargetSpawner::timer_callback, this)
     );
-    // Following function only if the previous one doesn't work
-    // timer = rclcpp::create_timer(
-    //     this->get_node_base_interface(),
-    //     this->get_node_timers_interface(),
-    //     this->get_clock(),
-    //     rclcpp::Duration(std::chrono::seconds(spawn_period)),
-    //     std::bind(&TargetSpawner::timer_callback, this),
-    //     this->get_default_callback_group()
-    // );
 }
 
-void TargetSpawner::laser_callback(const std_msgs::msg::Bool::SharedPtr msg)
+void TargetSpawner::laser_callback(const geometry_msgs::msg::Point msg)
 {
-    if (msg->data == true) {
-        RCLCPP_INFO(this->get_logger(), "Laser worked fine, new target arriving...");
-        timer->reset();
-    }
-    if (msg->data == false) {
-        RCLCPP_WARN(this->get_logger(), "Laser failed, what now?");
-        timer->reset();
-    }
+    Eigen::Vector3d lasered_position;
+    tf2::fromMsg(msg, lasered_position);
+
+    RCLCPP_INFO(this->get_logger(), "LASERED POSITION: [%.2f, %.2f, %.2f]", lasered_position.x(), lasered_position.y(), lasered_position.z());
+    RCLCPP_INFO(this->get_logger(), "REAL POSITION: [%.2f, %.2f, %.2f]", target_position.x(), target_position.y(), target_position.z());
+
+
+    // TODO: change it to false if error is too large
+    std_msgs::msg::Bool bool_msg;
+    bool_msg.data = true;
+    clear_pub->publish(bool_msg);
 }
 
 void TargetSpawner::timer_callback()
@@ -78,7 +81,9 @@ void TargetSpawner::timer_callback()
     double angle = angle_rand(gen);
 
     Eigen::Vector3d offset(distance * std::cos(angle), distance * std::sin(angle), 0.0);
-    Eigen::Vector3d target_position = robot_pose.translation() + robot_pose.rotation() * offset;
+
+    target_position.setZero();
+    target_position = robot_pose.translation() + robot_pose.rotation() * offset;
     target_position.z() = world_height; // ground level
 
     // manual override (TODO: remove)

@@ -285,5 +285,15 @@ def generate_launch_description():
     # )
     # nodes.append(point_cloud_node)
 
+    weeder_controller = Node(
+        package="arm_mazzolini",
+        executable="weeder_controller_node",
+        name="weeder_controller",
+        parameters=[{"use_sim_time": use_sim_time},
+                    controller_config_file],
+        condition = IfCondition( PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"]))
+    )
+    nodes.append(weeder_controller)
+
 
     return LaunchDescription(declared_arguments + [gz_launch] + nodes)

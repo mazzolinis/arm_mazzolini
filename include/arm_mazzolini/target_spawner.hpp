@@ -2,6 +2,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
+#include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <std_msgs/msg/bool.hpp>
 
@@ -19,12 +20,15 @@ class TargetSpawner : public rclcpp::Node
     private:
 
         double world_height;
+        Eigen::Vector3d target_position;
         
         // Publisher
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr target_pub;
+        rclcpp::Publisher<std_msgs::msg::Bool>::SharedPtr clear_pub;
 
         // Subscriber
-        rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr laser_sub;
+        // rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr laser_sub;
+        rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr laser_position_sub;
 
         // Timer and buffer
         rclcpp::TimerBase::SharedPtr timer;
@@ -33,7 +37,7 @@ class TargetSpawner : public rclcpp::Node
 
         // Callbacks
         void timer_callback();
-        void laser_callback(const std_msgs::msg::Bool::SharedPtr msg);
+        void laser_callback(const geometry_msgs::msg::Point msg);
 
         // Variables
         const int spawn_period = 2; // seconds between laser and new target

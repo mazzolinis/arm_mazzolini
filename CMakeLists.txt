@@ -32,6 +32,8 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(camera_info_manager REQUIRED)
+find_package(cv_bridge REQUIRED)
+
 
 set(PROJECT_DEPENDENCIES
   rclcpp
@@ -49,17 +51,27 @@ set(PROJECT_DEPENDENCIES
   tf2_ros
   tf2_eigen
   camera_info_manager
+  cv_bridge
 )
 
 # ==============================================================================
 #                                    LIBRARY
 # ==============================================================================
 
-add_library($(PROJECT_NAME)   SHARED  src/arm_kinematic.cpp
-                                      src/sphere_detector.cpp
+add_library(arm_mazzolini_library   SHARED  src/arm_kinematic.cpp
+                                            src/sphere_detector.cpp
 ) 
+
+ament_target_dependencies(
+  arm_mazzolini_library PUBLIC
+  ${PROJECT_DEPENDENCIES}
+)
+target_include_directories(arm_mazzolini_library PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
 ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME})
+ament_export_libraries(arm_mazzolini_library)
 
 # ==============================================================================
 #                                   ADD NODES                                   
@@ -93,11 +105,7 @@ ament_target_dependencies(
   camera_info_publisher PUBLIC
   ${PROJECT_DEPENDENCIES}
 )
-ament_target_dependencies(
-  weeder_controller PUBLIC
-  ${PROJECT_DEPENDENCIES}
-)
-target_link_libraries(weeder_controller ${PROJECT_NAME})
+target_link_libraries(weeder_controller PUBLIC arm_mazzolini_library)
 
 target_include_directories(kinematic_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
