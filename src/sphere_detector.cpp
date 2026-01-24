@@ -10,9 +10,17 @@ namespace arm_mazzolini
         // Do something here?
     }
 
+    void SphereDetector::SetCameraInfo(const sensor_msgs::msg::CameraInfo::ConstSharedPtr &info_msg)
+    {
+        fx_ = info_msg->k[0];
+        fy_ = info_msg->k[4];
+        cx_ = info_msg->k[2];
+        cy_ = info_msg->k[5];
+    }
+
     bool SphereDetector::DetectSphere(
-        const sensor_msgs::msg::Image::SharedPtr &rgb_msg,
-        const sensor_msgs::msg::Image::SharedPtr &depth_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
         Eigen::Vector3d &center_position)
     {
 
@@ -20,7 +28,7 @@ namespace arm_mazzolini
         cv::Mat rgb;
         try
         {
-            rgb = cv_bridge::toCvCopy(rgb_msg, "bgr8")->image;
+            rgb = cv_bridge::toCvCopy(rgb_msg, rgb_msg->encoding)->image;
         }
         catch (cv_bridge::Exception &ex)
         {
@@ -40,10 +48,22 @@ namespace arm_mazzolini
         }
 
         // depth analysis
-        cv::Mat depth = cv_bridge::toCvCopy(depth_msg, depth_msg->encoding)->image;
-        float Z = getDepthMedian(depth, centroid, depth_roi_size_);
+        cv::Mat depth;
+        try
+        {
+            depth = cv_bridge::toCvCopy(depth_msg, depth_msg->encoding)->image;
+        }
+        catch (cv_bridge::Exception &ex)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("SphereDetector"), "cv_bridge exception: %s", ex.what());
+            return false;
+        }
 
-        center_position = Eigen::Vector3d(centroid.x, centroid.y, Z);
+        float Z = getDepthMedian(depth, centroid);
+
+        center_position.x() = (centroid.x - cx_) * Z / fx_;
+        center_position.y() = (centroid.y - cy_) * Z / fy_;
+        center_position.z() = Z;
         // center_poistion is in camera frame, need to convert it
         
         return true;
@@ -109,9 +129,9 @@ namespace arm_mazzolini
     }
 
 
-    float SphereDetector::getDepthMedian(const cv::Mat& depth, const cv::Point& center, int roi_size)
+    float SphereDetector::getDepthMedian(const cv::Mat& depth, const cv::Point& center)
     {
-        int half = roi_size/2;
+        int half = depth_roi_size_/2;
         std::vector<float> values;
         for (int i = -half; i <= half; ++i)
         {

@@ -61,6 +61,9 @@ namespace arm_mazzolini
         size_t image_buffer_size;
         int frames_delay;
         int current_frame_index = 0;
+        int roi_size;
+        int morph_kernel_size;
+        int depth_roi_size;
     
         Eigen::Isometry3d old_pose; // pose of mobile robot base relative to map frame
         Eigen::Isometry3d new_pose; // same but at next step

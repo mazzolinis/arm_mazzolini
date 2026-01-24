@@ -11,7 +11,7 @@ namespace arm_mazzolini
         arm_kinematic = std::make_unique<ArmKinematic>(l1, l2);
 
         // Image detector initialization
-        sphere_detector = std::make_unique<SphereDetector>();
+        sphere_detector = std::make_unique<SphereDetector>(roi_size, morph_kernel_size, depth_roi_size);
 
         // Image subscriptions
         auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
@@ -66,7 +66,9 @@ namespace arm_mazzolini
             this->declare_parameter("camera_rgb_topic", std::string());
             this->declare_parameter("camera_depth_topic", std::string());
             this->declare_parameter("camera_info_topic", std::string());
-        
+            this->declare_parameter("roi_size", int());
+            this->declare_parameter("morph_kernel_size", int());
+            this->declare_parameter("depth_roi_size", int());        
 
             l1 = this->get_parameter("link1_length").as_double();
             l2 = this->get_parameter("link2_length").as_double();
@@ -78,6 +80,10 @@ namespace arm_mazzolini
             camera_rgb_topic = this->get_parameter("camera_rgb_topic").as_string();
             camera_depth_topic = this->get_parameter("camera_depth_topic").as_string();
             camera_info_topic = this->get_parameter("camera_info_topic").as_string();
+
+            roi_size = this->get_parameter("roi_size").as_int();
+            morph_kernel_size = this->get_parameter("morph_kernel_size").as_int();
+            depth_roi_size = this->get_parameter("depth_roi_size").as_int();
 
             // ========================== Forse questi non servono più ============================================
             // this->declare_parameter("base_frame_transform.translation", std::vector<double>());
@@ -103,6 +109,8 @@ namespace arm_mazzolini
         const sensor_msgs::msg::Image::ConstSharedPtr depth_msg,
         const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg)
     {
+        sphere_detector->SetCameraInfo(info_msg);
+
         switch (controller_status) {
             case ControllerStatus::NO_TARGET:
                 {
@@ -237,6 +245,7 @@ namespace arm_mazzolini
                 if (!new_pose.isApprox(old_pose, pose_threshold)) {
                     RCLCPP_INFO(this->get_logger(), "STOP!! Arm moving");
                     target_buffer.clear();
+                    controller_status = ControllerStatus::HAS_TARGET;
                     // TODO: Altro?
                 }
                 else {
@@ -275,6 +284,7 @@ namespace arm_mazzolini
             {
                 if (!new_pose.isApprox(old_pose, pose_threshold)) {
                     RCLCPP_INFO(this->get_logger(), "Mobile robot moved during POSITIONING");
+
                     // TODO: abort arm movement
                 }
                 break;

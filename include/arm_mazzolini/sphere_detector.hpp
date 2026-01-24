@@ -16,20 +16,22 @@ class SphereDetector
         SphereDetector(int roi_size = 5, int morph_kernel_size = 5, int depth_roi_size = 5);
 
     // Functions
+    void SetCameraInfo(const sensor_msgs::msg::CameraInfo::ConstSharedPtr &info_msg);
     bool DetectSphere(
-        const sensor_msgs::msg::Image::SharedPtr &rgb_msg,
-        const sensor_msgs::msg::Image::SharedPtr &depth_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
         Eigen::Vector3d &center_position);
     cv::Mat createMask(const cv::Mat &hsv);
     cv::Mat cleanMask(const cv::Mat &mask);
     bool findLargestBlob(const cv::Mat &mask, cv::Point &centroid);
-    float getDepthMedian(const cv::Mat &depth, const cv::Point &center, int roi_size);
+    float getDepthMedian(const cv::Mat &depth, const cv::Point &center);
    
     private:
     // Parameters
     int roi_size_;
     int morph_kernel_size_;
     int depth_roi_size_;
+    double fx_, fy_, cx_, cy_;
 };
 
 } // namespace arm_mazzolini

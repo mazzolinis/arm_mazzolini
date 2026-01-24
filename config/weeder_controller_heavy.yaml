@@ -76,3 +76,6 @@ weeder_controller:
     camera_rgb_topic: /simulated_D435/image_rect
     camera_depth_topic: /simulated_D435/depth_image
     camera_info_topic: /simulated_D435/camera_info
+    roi_size: 5
+    morph_kernel_size: 5
+    depth_roi_size: 5
