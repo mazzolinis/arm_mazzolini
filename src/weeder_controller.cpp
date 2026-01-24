@@ -2,8 +2,7 @@
 
 namespace arm_mazzolini
 {
-    WeederController::WeederController() : Node("weeder_controller"),
-        sync_(std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), rgb_sub_, depth_sub_, info_sub_))
+    WeederController::WeederController() : Node("weeder_controller")
     {
         // Parameters
         declare_and_get_parameters();
@@ -19,6 +18,7 @@ namespace arm_mazzolini
         rgb_sub_.subscribe(this, camera_rgb_topic, qos.get_rmw_qos_profile());
         depth_sub_.subscribe(this, camera_depth_topic, qos.get_rmw_qos_profile());
         info_sub_.subscribe(this, camera_info_topic, qos.get_rmw_qos_profile());
+        sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), rgb_sub_, depth_sub_, info_sub_);
         sync_->registerCallback(std::bind(&WeederController::image_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
         // TF2 listener
@@ -99,9 +99,9 @@ namespace arm_mazzolini
     }
 
     void WeederController::image_callback(
-        const sensor_msgs::msg::Image::SharedPtr rgb_msg,
-        const sensor_msgs::msg::Image::SharedPtr depth_msg,
-        const sensor_msgs::msg::CameraInfo::SharedPtr info_msg)
+        const sensor_msgs::msg::Image::ConstSharedPtr rgb_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr depth_msg,
+        const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg)
     {
         switch (controller_status) {
             case ControllerStatus::NO_TARGET:

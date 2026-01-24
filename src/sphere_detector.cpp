@@ -25,7 +25,7 @@ namespace arm_mazzolini
         catch (cv_bridge::Exception &ex)
         {
             RCLCPP_ERROR(rclcpp::get_logger("SphereDetector"), "cv_bridge exception: %s", ex.what());
-            return;
+            return false;
         }
         cv::Mat hsv;
         cv::cvtColor(rgb, hsv, cv::COLOR_BGR2HSV); // RGB to HSV

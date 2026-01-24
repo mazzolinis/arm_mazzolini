@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "geometry_msgs/msg/point.hpp"
@@ -96,9 +97,9 @@ namespace arm_mazzolini
         void timer_callback();
         void pose_callback(const geometry_msgs::msg::TransformStamped msg);
         void result_callback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult & result);
-        void image_callback(const sensor_msgs::msg::Image::SharedPtr rgb_msg,
-                            const sensor_msgs::msg::Image::SharedPtr depth_msg,
-                            const sensor_msgs::msg::CameraInfo::SharedPtr info_msg);
+        void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr rgb_msg,
+                            const sensor_msgs::msg::Image::ConstSharedPtr depth_msg,
+                            const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg);
         void send_joint_trajectory(const std::vector<double>& joint_angles);
 
         // Other packages
