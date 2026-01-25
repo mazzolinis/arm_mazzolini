@@ -146,7 +146,7 @@ namespace arm_mazzolini
                     }
                     else {
                         target_buffer.push_back(actual_position);
-                        RCLCPP_INFO(this->get_logger(), "Target detected at (%.3f, %.3f, %.3f)", actual_position.x(), actual_position.y(), actual_position.z());
+                        RCLCPP_INFO(this->get_logger(), "Target detected at [%.3f, %.3f, %.3f] in camera frame", actual_position.x(), actual_position.y(), actual_position.z());
                         
                         if(target_buffer.size() >= image_buffer_size) {
                             // Compute temporal average and send trajectory
@@ -159,14 +159,14 @@ namespace arm_mazzolini
                             target_buffer.clear();
 
                             try {
-                                geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("arm_base_link", "camera_optical_frame", tf2::TimePointZero);
+                                geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("arm_base_link", "camera_link", tf2::TimePointZero);
                                 Eigen::Isometry3d camera_relative_pose = tf2::transformToEigen(camera_pose);
                                 target_position = camera_relative_pose * target_relative_position;
                                 controller_status = ControllerStatus::ARM_MOVING;
                                 // store target position and use it later, DO NOT MOVE NOW!
                             }
                             catch (tf2::TransformException &ex) {
-                                RCLCPP_WARN(this->get_logger(), "Could not transform camera_optical_frame to arm_base_link: %s", ex.what());
+                                RCLCPP_WARN(this->get_logger(), "Could not transform camera_link to arm_base_link: %s", ex.what());
                             }
                                 
                     }
