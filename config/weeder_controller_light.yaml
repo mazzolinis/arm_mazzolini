@@ -71,8 +71,8 @@ weeder_controller:
     link1_length: 0.190
     link2_length: 0.250
     tf_callback_period: 100  # milliseconds between each tf callback
-    image_buffer_size: 3 # averaging target position of these many images
-    frames_delay: 6 # checks the above amount of images and then idle for these many
+    image_buffer_size: 5 # averaging target position of these many images
+    frames_delay: 10 # checks the above amount of images and then idle for these many
     camera_rgb_topic: /simulated_D435/image_rect
     camera_depth_topic: /simulated_D435/depth_image
     camera_info_topic: /simulated_D435/camera_info

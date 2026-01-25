@@ -28,7 +28,7 @@ namespace arm_mazzolini
         cv::Mat rgb;
         try
         {
-            rgb = cv_bridge::toCvCopy(rgb_msg, rgb_msg->encoding)->image;
+            rgb = cv_bridge::toCvCopy(rgb_msg, sensor_msgs::image_encodings::RGB8)->image;
         }
         catch (cv_bridge::Exception &ex)
         {
@@ -36,9 +36,16 @@ namespace arm_mazzolini
             return false;
         }
         cv::Mat hsv;
-        cv::cvtColor(rgb, hsv, cv::COLOR_BGR2HSV); // RGB to HSV
+        cv::cvtColor(rgb, hsv, cv::COLOR_RGB2HSV); // RGB to HSV
+
         cv::Mat mask = createMask(hsv);
         mask = cleanMask(mask);
+
+        // Debug options
+        cv::imshow("RGB", rgb);
+        cv::imshow("HSV", hsv);
+        cv::imshow("mask", mask);
+        cv::waitKey(1);
 
         cv::Point centroid;
         bool found = findLargestBlob(mask, centroid);

@@ -32,6 +32,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(camera_info_manager REQUIRED)
+find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
 
 
@@ -51,6 +52,7 @@ set(PROJECT_DEPENDENCIES
   tf2_ros
   tf2_eigen
   camera_info_manager
+  OpenCV
   cv_bridge
 )
 

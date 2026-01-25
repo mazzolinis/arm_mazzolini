@@ -51,7 +51,7 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
 
         <!-- VISUAL -->
         <visual name="visual">
-          <geometry><sphere><radius>0.01</radius></sphere></geometry>
+          <geometry><sphere><radius>0.05</radius></sphere></geometry>
           <material>
             <ambient>1 0 0 1</ambient>
             <diffuse>1 0 0 1</diffuse>
@@ -62,7 +62,7 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
         
         <!-- COLLISION (physics interaction) -->
         <collision name="collision">
-          <geometry><sphere><radius>0.01</radius></sphere></geometry>
+          <geometry><sphere><radius>0.05</radius></sphere></geometry>
           <surface>
             <contact>
               <ode>

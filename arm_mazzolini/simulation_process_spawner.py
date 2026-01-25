@@ -207,7 +207,18 @@ class SimulationProcessSpawner(Node):
                 delay=2.0
             )
         )
-        
+
+        targets.append(
+            SpawnTarget(
+                name='weeder_controller',
+                package='arm_mazzolini',
+                executable='weeder_controller',
+                extra_args=[],
+                params_file=self.controller_yaml,
+                delay=1.0
+            )
+        )
+
         return targets
 
 # =====================================================

@@ -150,7 +150,7 @@ namespace arm_mazzolini
                         
                         if(target_buffer.size() >= image_buffer_size) {
                             // Compute temporal average and send trajectory
-                            auto target_relative_position = Eigen::Vector3d::Zero();
+                            Eigen::Vector3d target_relative_position = Eigen::Vector3d::Zero();
                             for(const auto& pos : target_buffer) {
                                 target_relative_position += pos;
                             }
@@ -347,6 +347,6 @@ int main(int argc, char* argv[])
     rclcpp::init(argc, argv);
     auto node = std::make_shared<arm_mazzolini::WeederController>();
     rclcpp::spin(node);
-    rclcpp::shutdown;
+    rclcpp::shutdown();
     return 0;
 }
