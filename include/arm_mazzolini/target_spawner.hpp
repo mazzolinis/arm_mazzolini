@@ -4,6 +4,7 @@
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
 #include <std_msgs/msg/bool.hpp>
 
 #include <tf2_eigen/tf2_eigen.hpp>
@@ -11,16 +12,26 @@
 #include <tf2_ros/buffer.h>
 #include <Eigen/Dense>
 #include <random>
+#include <fstream>
+#include <mutex>
 
 class TargetSpawner : public rclcpp::Node
 {
     public:
         TargetSpawner();
+        ~TargetSpawner();
 
     private:
 
         double world_height;
         Eigen::Vector3d target_position;
+        Eigen::Isometry3d robot_pose_;
+
+        // Logging
+        std::string out_file;
+        std::mutex buffer_mutex;
+        // std::vector<std::tuple<double, double, double>> buffer;
+        std::vector<std::tuple<double, double, double, double, double>> buffer;
         
         // Publisher
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr target_pub;
@@ -28,7 +39,8 @@ class TargetSpawner : public rclcpp::Node
 
         // Subscriber
         // rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr laser_sub;
-        rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr laser_position_sub;
+        rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr laser_position_sub;
+        rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr pose_sub;
 
         // Timer and buffer
         rclcpp::TimerBase::SharedPtr timer;
@@ -37,17 +49,22 @@ class TargetSpawner : public rclcpp::Node
 
         // Callbacks
         void timer_callback();
-        void laser_callback(const geometry_msgs::msg::Point msg);
+        void laser_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg);
+        void pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg);
 
         // Variables
         const int spawn_period = 2; // seconds between laser and new target
-        const double min_distance = 0.2;
-        const double max_distance = 4.0;
-        const double angle_range = M_PI / 1.5;
+        const double min_distance = 0.1;
+        const double max_distance = 0.45;
+        const double angle_range = M_PI / 6;
+        // adding a new area to spawn target
+        const double lato = 0.2;
+        Eigen::Vector3d center = Eigen::Vector3d(-0.06, -0.78, 1.9); 
         
         // Random numbers generators
         std::mt19937 gen;
         std::uniform_real_distribution<double> dist_rand;
         std::uniform_real_distribution<double> angle_rand;
+        std::uniform_real_distribution<double> lato_rand;
         
 };

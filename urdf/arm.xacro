@@ -121,7 +121,39 @@
                 </inertial>
             </link>
         </xacro:if>
-        
+
+        <!-- Laser -->
+        <link name="laser">
+            <visual>
+                <geometry>
+                    <cylinder radius="0.005" length="1.0"/>
+                </geometry>
+                <material name="grey">
+                    <color rgba="0.6 0.6 0.6 1"/>
+                </material>
+            </visual>
+        </link>
+
+        <joint name="laser_joint" type="fixed">
+            <xacro:if value="${is_light}">
+                <parent link="link2_light"/>
+            </xacro:if>
+            <xacro:unless value="${is_light}">
+                <parent link="link2_heavy"/>
+            </xacro:unless>
+            <child link="laser"/>
+            <origin xyz="${l2} 0 ${-h2-0.5}" rpy="0 0 0"/>
+        </joint>
+
+        <link name="kinematic_link">
+        </link>
+
+        <joint name="fixed_for_kinematic" type="fixed">
+            <parent link="arm_base_link"/>
+            <child link="kinematic_link"/>
+            <origin xyz="${l0} 0 ${h0}" rpy="0 0 0"/>
+        </joint>
+
         <!-- Joint 1 (Revolute) -->
         <joint name="joint1" type="revolute">
             <parent link="arm_base_link"/>

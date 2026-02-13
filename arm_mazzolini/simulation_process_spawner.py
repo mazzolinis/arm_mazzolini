@@ -20,6 +20,7 @@ class SpawnTarget:
     executable: str
     extra_args: List[str]
     delay: float        # seconds of delay after simulation started
+    log_level: Optional[str] = None
     params_file: Optional[str] = None
     inline_params: Optional[dict[str, Any]] = None
     spawned: bool = False     # check if already spawned
@@ -56,7 +57,7 @@ class SimulationProcessSpawner(Node):
     def check_clock(self):
         now = self.clock.now()
 
-        if not self.started and now > self.last_time:
+        if not self.started and now > self.last_time:  # This is the reason for simulation only
             self.started = True
             self.play_timer.cancel()
             self.get_logger().info('Simulation started. Scheduling nodes.')
@@ -92,7 +93,14 @@ class SimulationProcessSpawner(Node):
     def spawn(self, target: SpawnTarget):
         cmd = ['ros2', 'run', target.package, target.executable]
         cmd.extend(target.extra_args)
-        cmd.extend(['--ros-args', '-p', 'use_sim_time:=true']) # This is the reason for simulation only
+        cmd.extend(['--ros-args', '-p', 'use_sim_time:=true']) 
+
+        if target.log_level:
+            cmd.extend([
+                '--log-level',
+                f'{target.name}:={target.log_level}'
+            ])
+
 
         if target.inline_params:
             for key, value in target.inline_params.items():
@@ -116,7 +124,7 @@ class SimulationProcessSpawner(Node):
 
     def monitor_processes(self):
         for proc in self.processes:
-            if proc.poll() is not None:
+            if proc.poll() is not None and proc.returncode != 0:
                 self.get_logger().error(
                     f'Process with PID {proc.pid} has terminated with code {proc.returncode}.'
                 )
@@ -133,17 +141,22 @@ class SimulationProcessSpawner(Node):
                 pass
         super().destroy_node()
 
-    # ------------------- PARAMETERS ARE WRITTEN HERE -----------------------
-   
+    # =====================================================
+    #                    PARAMETERS ARE WRITTEN HERE 
+    # =====================================================
     def get_params(self):
 
         self.declare_parameter('controller_yaml', ' ')
         self.controller_yaml = self.get_parameter('controller_yaml').get_parameter_value().string_value
-        self.get_logger().info(f'Using controller YAML: {self.controller_yaml}')
+        self.get_logger().debug(f'Using controller YAML: {self.controller_yaml}')
         self.declare_parameter('world_height', 0.0)
         self.world_height = self.get_parameter('world_height').get_parameter_value().double_value
+        self.declare_parameter('output_file', ' ')
+        self.output_file = self.get_parameter('output_file').get_parameter_value().string_value
 
-    # ------------------- NODES ARE WRITTEN HERE -----------------------
+    # =====================================================
+#                       NODES ARE WRITTEN HERE 
+    # =====================================================
 
     def build_spawn_targets(self):
 
@@ -158,6 +171,7 @@ class SimulationProcessSpawner(Node):
                 package='controller_manager',
                 executable='spawner',
                 extra_args=['joint_state_broadcaster'],
+                log_level='WARN',
                 delay=0.1   # Avoid using 0.0
             )
         )
@@ -168,6 +182,7 @@ class SimulationProcessSpawner(Node):
                 executable='spawner',
                 extra_args=['joint_trajectory_controller',
                             '--controller-manager', controller_manager],
+                log_level='WARN',
                 params_file=self.controller_yaml,
                 delay=0.1
             )
@@ -179,6 +194,7 @@ class SimulationProcessSpawner(Node):
                 executable='spawner',
                 extra_args=['diff_drive_controller',
                             '--controller-manager', controller_manager],
+                log_level='WARN',
                 params_file=self.controller_yaml,
                 delay=0.1
             )
@@ -203,7 +219,7 @@ class SimulationProcessSpawner(Node):
                 package='arm_mazzolini',
                 executable='target_spawner',
                 extra_args=[],
-                inline_params={'world_height': self.world_height},
+                inline_params={'world_height': self.world_height, 'output_file': self.output_file},
                 delay=2.0
             )
         )

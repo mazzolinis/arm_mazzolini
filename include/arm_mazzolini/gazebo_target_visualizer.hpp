@@ -20,8 +20,14 @@ private:
     rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr clear_sub_;
     
     std::string current_target_name_;
-    const std::chrono::seconds wait_time{2};
+    const std::chrono::seconds wait_time{3};
+    std::vector<double> ambient_;
+    std::vector<double> diffuse_;
+    std::vector<double> specular_;
+    std::vector<double> emissive_;
     
+    void get_material_parameter(const std::string& param_name, std::vector<double>& parameter);
+    std::string color_to_string(const std::vector<double>& color);
     void target_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg);
     void clear_callback(const std_msgs::msg::Bool::SharedPtr msg);
     void delete_current_target();

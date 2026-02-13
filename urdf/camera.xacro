@@ -27,7 +27,7 @@
                 <geometry>
                     <mesh filename="${camera_mesh}" scale="${scale}"/>
                 </geometry>
-                <origin xyz="0 0 -0.07" rpy="0 0 0"/>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
             </collision>
             <inertial>
                 <origin xyz="0 0 0" rpy="0 0 0"/>
@@ -47,7 +47,15 @@
                 <parent link="link2_light"/>
             </xacro:if>
             <child link="camera_link"/>
-            <origin xyz="${l2/2} 0 ${-h2-0.03}" rpy="${PI+PI/9} 0 ${-PI/2}"/>
+            <origin xyz="${l2/3} 0 ${-h2-0.03}" rpy="${PI+PI/9} 0 ${-PI/2}"/>
+        </joint>
+
+        <link name="camera_kinematic"/>
+
+        <joint name="camera_kinematic_joint" type="fixed">
+            <parent link="camera_link"/>
+            <child link="camera_kinematic"/>
+            <origin xyz="0 0 0.03" rpy="0 0 0"/>
         </joint>
 
         <link name="camera_optical_frame"/>
@@ -57,7 +65,7 @@
             <joint name="camera_optical_joint" type="fixed">
                 <parent link="camera_link"/>
                 <child link="camera_optical_frame"/>
-                <origin xyz="0 0 0.07" rpy="${PI/2} ${-PI/2} 0"/>
+                <origin xyz="0 0 0.03" rpy="${PI/2} ${-PI/2} 0"/>
             </joint>
         </xacro:if>
 

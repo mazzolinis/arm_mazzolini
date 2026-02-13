@@ -9,9 +9,10 @@ namespace arm_mazzolini {
     }
 
     // TODO: add elbow up and exclusion zones
-    bool ArmKinematic::computeIK(const Eigen::Vector3d& position, std::vector<double> theta, ErrorType& error_type)
+    bool ArmKinematic::computeIK(const Eigen::Vector3d& position, std::vector<double>& theta, ErrorType& error_type)
     {
-        if(theta.empty()) {
+        if(position.isZero()) {
+            // TODO: Modficare questo check, così non va bene
             error_type = ErrorType::TARGET_EMPTY;
             return false;
         }
@@ -20,11 +21,11 @@ namespace arm_mazzolini {
         double r = std::sqrt(x*x + y*y);
 
         // Check for errors
-        if (x < 0) {
+        if (x < 0 || r < std::abs(l1_ - l2_)) {
             error_type = ErrorType::EXCLUSION_ZONE;
             return false;
         }
-        else if (r > (l1_+l2_) || r < std::abs(l1_-l2_)) {
+        else if (r > (l1_ + l2_) ) {
             error_type = ErrorType::TARGET_TOO_FAR;
             return false;
         }

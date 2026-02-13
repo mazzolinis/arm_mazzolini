@@ -64,14 +64,18 @@ namespace arm_mazzolini
         int roi_size;
         int morph_kernel_size;
         int depth_roi_size;
+        MaskType mask_type;
     
+        // Mobile robot pose (and threshold)
         Eigen::Isometry3d old_pose; // pose of mobile robot base relative to map frame
         Eigen::Isometry3d new_pose; // same but at next step
-
         const double pose_threshold = 1e-3;   
         
         std::vector<std::string> joint_names = {"joint1", "joint2"};
-        void declare_and_get_parameters();    
+        void declare_and_get_parameters();   
+        const std::vector<double> initial_joint_values = {-M_PI/3, M_PI/3}; 
+        std::vector<double> last_joint_values;
+        const double joint_tolerance = 1e-2; // radians
 
         // Messages
         control_msgs::action::FollowJointTrajectory::Goal goal_msg;
@@ -79,7 +83,7 @@ namespace arm_mazzolini
 
         // Subscriptions and publishers
         rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr joints_client;
-        rclcpp::Publisher<geometry_msgs::msg::Point>::SharedPtr laser_pub;
+        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr laser_pub;
 
         // Image QoS subscriber
         message_filters::Subscriber<sensor_msgs::msg::Image> rgb_sub_;
@@ -94,7 +98,8 @@ namespace arm_mazzolini
         rclcpp::TimerBase::SharedPtr timer;
         rclcpp::Time last_warning_time;
         double warning_period = 2.0; // seconds
-        int trajectory_time_ms = 50;
+        int trajectory_time_ms;
+        const uint64_t message_throttle_ms = 1000; // for INFO and WARN messages using THROTTLE
         
         // Callbacks
         void timer_callback();
@@ -104,6 +109,7 @@ namespace arm_mazzolini
                             const sensor_msgs::msg::Image::ConstSharedPtr depth_msg,
                             const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg);
         void send_joint_trajectory(const std::vector<double>& joint_angles);
+        bool vectors_are_equal(const std::vector<double>& vec1, const std::vector<double>& vec2);
 
         // Other packages
         std::unique_ptr<SphereDetector> sphere_detector;

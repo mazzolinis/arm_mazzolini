@@ -61,7 +61,14 @@
                 <visualize>true</visualize>
                 <topic>force_torque_sensor</topic>
             </sensor> -->
-        </gazebo>
+            <plugin
+                filename="libignition-gazebo-pose-publisher-system.so"
+                name="ignition::gazebo::systems::PosePublisher">
+                <publish_model_pose>true</publish_model_pose>
+                <publish_link_pose>false</publish_link_pose>
+                <update_frequency>50</update_frequency>
+            </plugin>
+        </gazebo>       
 
     </xacro:macro>
 

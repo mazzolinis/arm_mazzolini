@@ -4,7 +4,7 @@
 #include <cmath>
 #include <vector>
 #include <string>
-#include "arm_mazzolini/error_type.hpp"
+#include "arm_mazzolini/shared_classes.hpp"
 
 namespace arm_mazzolini {
     
@@ -12,7 +12,7 @@ namespace arm_mazzolini {
     {
     public:
         ArmKinematic(double l1, double l2);
-        bool computeIK(const Eigen::Vector3d& position,std::vector<double> theta, ErrorType& error_type);
+        bool computeIK(const Eigen::Vector3d& position,std::vector<double>& theta, ErrorType& error_type);
         double normalizeAngle(double angle);
 
         private:

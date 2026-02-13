@@ -62,14 +62,15 @@ kinematic_node:
     link1_length: 0.190
     link2_length: 0.250
 
-    base_frame_transform:
-      translation: [0.0, -0.490, 0.350] # x, y, z (meters)
-      rotation: [-90.0, 0.0, 0.0] # yaw, pitch, roll (degrees)
-
+    arm_base_to_DH:
+      translation: [0.19, 0.0, 0.07] # [x, y, z] (meters)
+      rotation: [0.0, 0.0, 0.0] # [yaw, pitch, roll] (degrees)
+      
 weeder_controller:
   ros__parameters:
     link1_length: 0.190
     link2_length: 0.250
+    trajectory_time_ms: 250  # time in milliseconds to execute the trajectory
     tf_callback_period: 100  # milliseconds between each tf callback
     image_buffer_size: 3 # averaging target position of these many images
     frames_delay: 6 # checks the above amount of images and then idle for these many
@@ -79,3 +80,38 @@ weeder_controller:
     roi_size: 5
     morph_kernel_size: 5
     depth_roi_size: 5
+    mask_type: HSV_red # options: HSV_red, ExG_threshold, ExG_Otsu, ExGR. Default: HSV_red
+
+gazebo_target_visualizer:
+  ros__parameters:
+  # Colors are always RGBA
+  # Uncomment only one of the following
+
+    # Red Target
+    material:
+      ambient: [1.0, 0.0, 0.0, 1.0]       # colore del materiale senza luce
+      diffuse: [1.0, 0.0, 0.0, 1.0]       # colore del materiale alla luce
+      specular: [1.0, 0.5, 0.5, 1.0]  # riflettività (alto = plastica lucida)
+      emissive: [0.5, 0.0, 0.0, 1.0]    # luminosità emessa
+
+    # # Light Green Target 
+    # material: 
+    #   ambient: [0.2, 0.6, 0.2, 1.0]      
+    #   diffuse: [0.3, 0.8, 0.3, 1.0]
+    #   specular: [0.05, 0.05, 0.05, 1.0] 
+    #   emissive: [0.0, 0.0, 0.0, 1.0] 
+
+    # # Dark Green Target
+    # material: 
+    #   ambient: [0.10, 0.4, 0.10, 1.0]      
+    #   diffuse: [0.15, 0.55, 0.15, 1.0]
+    #   specular: [0.03, 0.03, 0.03, 1.0] 
+    #   emissive: [0.0, 0.0, 0.0, 1.0] 
+
+    # # Yellow Target (erba secca)
+    # material: 
+    #   ambient: [0.4, 0.5, 0.2, 1.0]      
+    #   diffuse: [0.6, 0.7, 0.3, 1.0]
+    #   specular: [0.04, 0.04, 0.04, 1.0] 
+    #   emissive: [0.0, 0.0, 0.0, 1.0] 
+

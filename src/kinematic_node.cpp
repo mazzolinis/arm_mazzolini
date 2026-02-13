@@ -7,16 +7,7 @@ KinematicNode::KinematicNode() : Node("kinematic_node")
     // Parameters
     declare_and_get_parameters();
 
-    // pose initialization
-    Eigen::Vector3d t(translation[0], translation[1], translation[2]);
-    Eigen::Matrix3d R = (
-        Eigen::AngleAxisd(rotation[0] *M_PI/180.0, Eigen::Vector3d::UnitZ()) *
-        Eigen::AngleAxisd(rotation[1] *M_PI/180.0, Eigen::Vector3d::UnitY()) *
-        Eigen::AngleAxisd(rotation[2] *M_PI/180.0, Eigen::Vector3d::UnitX())
-    ).toRotationMatrix();
-    
-    relative_pose.linear() = R;
-    relative_pose.translation() = t;
+ 
     arm_pose = relative_pose; // need to initialize pose
     
     // Subscribers
@@ -63,19 +54,24 @@ void KinematicNode::declare_and_get_parameters()
     try {
         this->declare_parameter("link1_length", double());
         this->declare_parameter("link2_length", double());  
-        this->declare_parameter("base_frame_transform.translation", std::vector<double>());
-        this->declare_parameter("base_frame_transform.rotation", std::vector<double>());
+        this->declare_parameter("arm_base_to_DH.translation", std::vector<double>());
+        this->declare_parameter("arm_base_to_DH.rotation", std::vector<double>());
 
         l1 = this->get_parameter("link1_length").as_double();
         l2 = this->get_parameter("link2_length").as_double();
-        RCLCPP_INFO(this->get_logger(), "Link lengths: l1 = %.3f, l2 = %.3f", l1, l2);
-        const auto trans_vec = this->get_parameter("base_frame_transform.translation").as_double_array();
-        const auto rot_vec = this->get_parameter("base_frame_transform.rotation").as_double_array();
+        // RCLCPP_INFO(this->get_logger(), "Link lengths: l1 = %.3f, l2 = %.3f", l1, l2);
+        const auto trans_vec = this->get_parameter("arm_base_to_DH.translation").as_double_array();
+        const auto rot_vec = this->get_parameter("arm_base_to_DH.rotation").as_double_array();
 
-        for (size_t i = 0; i < 3; ++i) {
-            translation[i] = trans_vec[i];
-            rotation[i] = rot_vec[i];
-        }
+        // pose initialization
+        Eigen::Vector3d t(trans_vec[0], trans_vec[1], trans_vec[2]);
+        Eigen::Matrix3d R = (
+            Eigen::AngleAxisd(rot_vec[0] *M_PI/180.0, Eigen::Vector3d::UnitZ()) *
+            Eigen::AngleAxisd(rot_vec[1] *M_PI/180.0, Eigen::Vector3d::UnitY()) *
+            Eigen::AngleAxisd(rot_vec[2] *M_PI/180.0, Eigen::Vector3d::UnitX())
+        ).toRotationMatrix();
+        relative_pose.linear() = R;
+        relative_pose.translation() = t;
     } 
     catch(const rclcpp::exceptions::InvalidParameterTypeException& ex) {
         RCLCPP_ERROR(this->get_logger(), "Error in params declaration: %s", ex.what());
@@ -95,7 +91,7 @@ void KinematicNode::timer_callback()
     
     try {
         geometry_msgs::msg::TransformStamped pose_message = 
-        tf_buffer->lookupTransform("odom", "base_link", tf2::TimePointZero);
+        tf_buffer->lookupTransform("odom", "arm_base_link", tf2::TimePointZero);
         pose_callback(pose_message);
     }
     catch (tf2::TransformException &ex) {

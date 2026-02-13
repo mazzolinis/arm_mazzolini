@@ -78,6 +78,7 @@ def generate_launch_description():
     )
 
     camera_config_file = PathJoinSubstitution([pkg_share, "config", "simulated_D435_parameters.yaml"])
+    output_file = PathJoinSubstitution(["/home", "simone", "Scrivania", "first_test_data.csv"])
 
     robot_description_content = Command(
         [
@@ -146,7 +147,7 @@ def generate_launch_description():
         executable = "create",
         arguments = ['-file', PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "urdf", "agriculture_geometry.urdf"]),
                      '-name', 'agriculture_world',
-                     '-x', '0', '-y', '0', '-z', world_height,
+                     '-x', '0', '-y', '-4.0', '-z', PythonExpression([world_height, '+ 0.1']),
                      '-R', '0', '-P', '0', '-Y', '0',],
         parameters=[{'use_sim_time': use_sim_time}],
         output = 'screen',
@@ -177,6 +178,7 @@ def generate_launch_description():
         # '/simulated_D435/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo', # Should I use it?
         '/simulated_D435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
         '/simulated_D435/image@sensor_msgs/msg/Image[gz.msgs.Image',
+        '/model/robot/pose@geometry_msgs/msg/Pose[gz.msgs.Pose',
         ],
         condition=IfCondition(use_sim_time),
         output='screen'
@@ -187,7 +189,8 @@ def generate_launch_description():
         package = "arm_mazzolini",
         executable = "gazebo_target_visualizer",
         name = "gazebo_target_visualizer",
-        parameters = [{"use_sim_time":use_sim_time}],
+        parameters = [{"use_sim_time":use_sim_time},
+                      controller_config_file],
         output = "screen"
     )
     nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[gazebo_target_visualizer])])))
@@ -211,6 +214,7 @@ def generate_launch_description():
             'controller_yaml': controller_config_file,
             'world_height': world_height,
             'use_sim_time': use_sim_time,
+            'output_file': output_file,
         }],
         condition = IfCondition(use_sim_time), # This node works only in simulation
         output='screen',
