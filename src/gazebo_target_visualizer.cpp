@@ -50,7 +50,7 @@ std::string GazeboTargetVisualizer::color_to_string(const std::vector<double>& c
 void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
 {
 
-  // RCLCPP_INFO(this->get_logger(), " =========================== TARGET RICEVUTO =========================== ");
+  RCLCPP_INFO(this->get_logger(), " =========================== TARGET RICEVUTO =========================== ");
   // ensure service is available (not sure if this is correct way to do it)
   while (!spawn_client_->wait_for_service(wait_time)) {
     if (!rclcpp::ok()){
@@ -66,6 +66,7 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
 
   auto point = msg->point;
   
+  // Sphere
   std::string xml;
   xml += R"(<?xml version="1.0"?>)";
   xml += R"(<sdf version="1.8"><model name=")";
@@ -118,30 +119,38 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
     </model>
   </sdf>)";
 
+  // // Plant (with stl mesh, correct SDF format)
   // std::string xml;
   // xml += R"(<?xml version="1.0"?>)";
   // xml += R"(<sdf version="1.8"><model name=")";
   // xml += current_target_name_;
   // xml += R"(">)";
-  // xml += "<static>true</static>"; 
+  // xml += "<static>true</static>";
   // xml += "<pose>";
-  // xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z);
-  // xml += R"( 0 0 0</pose>
+  // xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + " ";
+  // xml += "0 0 0</pose>";
+  // xml += R"(
   //     <link name="link">
   //       <!-- Disable gravity for this object -->
-  //       <gravity>false</gravity>  
+  //       <gravity>false</gravity>
 
   //       <!-- VISUAL -->
   //       <visual name="visual">
-  //         <geometry><sphere><radius>0.02</radius></sphere></geometry>
-  //         <material>
-  //           <ambient>1 0 0 1</ambient>
-  //           <diffuse>1 0 0 1</diffuse>
-  //           <specular>1 0.5 0.5 1</specular>
-  //           <emissive>0.5 0 0 1</emissive>
-  //         </material>
-  //       </visual>
-        
+  //         <geometry>
+  //           <mesh>
+  //             <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/PlantSprout.stl</uri>
+  //             <scale>0.001 0.001 0.001</scale>
+  //           </mesh>
+  //         </geometry>
+  //         <material>)";
+  // xml += "<ambient>" + color_to_string(ambient_) + "</ambient>";
+  // xml += "<diffuse>" + color_to_string(diffuse_) + "</diffuse>";
+  // xml += "<specular>" + color_to_string(specular_) + "</specular>";
+  // xml += "<emissive>" + color_to_string(emissive_) + "</emissive>";
+  // xml += "</material>";
+  // xml += "</visual>";
+
+  // xml += R"(
   //       <!-- COLLISION (physics interaction) -->
   //       <collision name="collision">
   //         <geometry><sphere><radius>0.02</radius></sphere></geometry>
@@ -154,7 +163,7 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   //           </contact>
   //         </surface>
   //       </collision>
-        
+
   //       <!-- INERTIAL (mass properties) -->
   //       <inertial>
   //         <mass>0.1</mass>  <!-- Small mass -->

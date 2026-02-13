@@ -67,9 +67,9 @@ void TargetSpawner::timer_callback()
     // Get robot pose
     geometry_msgs::msg::TransformStamped transformStamped;
 
-    // RCLCPP_INFO(this->get_logger(), "============================================================================");
-    // RCLCPP_INFO(this->get_logger(), "Spawning new target...");
-    // RCLCPP_INFO(this->get_logger(), "============================================================================");
+    RCLCPP_INFO(this->get_logger(), "============================================================================");
+    RCLCPP_INFO(this->get_logger(), "Spawning new target...");
+    RCLCPP_INFO(this->get_logger(), "============================================================================");
 
     // ===========================================================================================================================================
     //              TODO: fare chiarezza qui

@@ -80,7 +80,7 @@ weeder_controller:
     roi_size: 5
     morph_kernel_size: 5
     depth_roi_size: 5
-    mask_type: ExG_threshold # options: HSV_red, ExG_threshold, ExG_Otsu, ExGR. Default: HSV_red
+    mask_type: ExGR # options: HSV_red, ExG_threshold, ExG_Otsu, ExGR. Default: HSV_red
 
 gazebo_target_visualizer:
   ros__parameters:
