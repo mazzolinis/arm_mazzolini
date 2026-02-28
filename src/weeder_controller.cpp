@@ -12,6 +12,7 @@ namespace arm_mazzolini
 
         // Image detector initialization
         sphere_detector = std::make_unique<SphereDetector>(roi_size, morph_kernel_size, depth_roi_size, mask_type);
+        desired_position = sphere_detector->PBTargetPosition(desired_feature);
 
         // Image subscriptions
         auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
@@ -21,14 +22,21 @@ namespace arm_mazzolini
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), rgb_sub_, depth_sub_, info_sub_);
         sync_->registerCallback(std::bind(&WeederController::image_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
+        // Joint states subscription
+        joint_state_sub = this->create_subscription<sensor_msgs::msg::JointState>(
+            "/joint_states", 
+            rclcpp::SensorDataQoS(),
+            std::bind(&WeederController::joint_states_callback, this, std::placeholders::_1)
+        );
+
         // TF2 listener
         tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
         tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
-        timer = rclcpp::create_timer(
+        pose_timer = rclcpp::create_timer(
             this,
             this->get_clock(),
             rclcpp::Duration(std::chrono::milliseconds(tf_callback_period_ms)),
-            std::bind(&WeederController::timer_callback, this)
+            std::bind(&WeederController::pose_timer_callback, this)
         );
         last_warning_time = this->now();
 
@@ -47,6 +55,14 @@ namespace arm_mazzolini
 
         // Publisher
         laser_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("/lasered_position", 10);
+
+        // Visual servoing
+        control_timer = rclcpp::create_timer(
+            this,
+            this->get_clock(),
+            rclcpp::Duration(std::chrono::milliseconds(control_dt)),
+            std::bind(&WeederController::control_callback, this)
+        );
 
         // Initial status
         new_pose.setIdentity();
@@ -71,6 +87,14 @@ namespace arm_mazzolini
             this->declare_parameter("depth_roi_size", int());    
             this->declare_parameter("trajectory_time_ms", 250);
             this->declare_parameter("mask_type", std::string());
+            this->declare_parameter("visual_servoing.filtering", true);
+            this->declare_parameter("visual_servoing.alpha", std::vector<double>());
+            this->declare_parameter("visual_servoing.beta", std::vector<double>());
+            this->declare_parameter("visual_servoing.lambda", std::vector<double>());
+            this->declare_parameter("visual_servoing.pcontroller_period_ms", int());
+            this->declare_parameter("visual_servoing.smoothing", double());
+            this->declare_parameter("visual_servoing.control_threshold", 0.005);
+            this->declare_parameter("visual_servoing.desired_feature", std::vector<double>());
 
             // Arm lengths
             l1 = this->get_parameter("link1_length").as_double();
@@ -110,6 +134,17 @@ namespace arm_mazzolini
                 RCLCPP_WARN(this->get_logger(), "Using default mask type: HSV_red");
                 mask_type = MaskType::HSV_red;
             }
+
+            // Visual servoing parameters
+            filtering = this->get_parameter("visual_servoing.filtering").as_bool();
+            alpha = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.alpha").as_double_array().data());
+            beta = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.beta").as_double_array().data());
+            lambda = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.lambda").as_double_array().data());
+            control_dt = this->get_parameter("visual_servoing.pcontroller_period_ms").as_int();
+            double smoothing = this->get_parameter("visual_servoing.smoothing").as_double();
+            trajectory_dt = static_cast<int>(control_dt * smoothing);
+            control_threshold = this->get_parameter("visual_servoing.control_threshold").as_double();
+            desired_feature = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.desired_feature").as_double_array().data());
         } 
 
         catch(const rclcpp::exceptions::InvalidParameterTypeException& ex) {
@@ -124,7 +159,11 @@ namespace arm_mazzolini
         const sensor_msgs::msg::Image::ConstSharedPtr depth_msg,
         const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg)
     {
-        sphere_detector->SetCameraInfo(info_msg);
+        if (!camera_initialized) {
+            // Hypothesis: camera info are constant
+            sphere_detector->SetCameraInfo(info_msg);
+            camera_initialized = true;
+        }
 
         switch (controller_status) {
             case ControllerStatus::NO_TARGET:
@@ -139,7 +178,7 @@ namespace arm_mazzolini
 
                         Eigen::Vector3d actual_position;
                         
-                        if(!sphere_detector->DetectSphere(rgb_msg, depth_msg, actual_position)) {
+                        if(!sphere_detector->PBTargetPosition(rgb_msg, depth_msg, actual_position)) {
                             RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "No target detected");
                             return;
                         }
@@ -153,7 +192,7 @@ namespace arm_mazzolini
             case ControllerStatus::HAS_TARGET:
                 {
                     Eigen::Vector3d actual_position;
-                    if(!sphere_detector->DetectSphere(rgb_msg, depth_msg, actual_position)) {
+                    if(!sphere_detector->PBTargetPosition(rgb_msg, depth_msg, actual_position)) {
                         RCLCPP_INFO(this->get_logger(), "Target lost!");
                         target_buffer.clear();
                         controller_status = ControllerStatus::NO_TARGET;
@@ -165,24 +204,24 @@ namespace arm_mazzolini
                         
                         if(target_buffer.size() >= image_buffer_size) {
                             // Compute temporal average and send trajectory
-                            Eigen::Vector3d target_relative_position = Eigen::Vector3d::Zero();
+                            target_camera_position.setZero();
                             for(const auto& pos : target_buffer) {
-                                target_relative_position += pos;
+                                target_camera_position += pos;
                             }
                             
-                            target_relative_position /= static_cast<double>(image_buffer_size);
+                            target_camera_position /= static_cast<double>(image_buffer_size);
                             target_buffer.clear();
 
                             try {
                                 geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("kinematic_link", "camera_kinematic", tf2::TimePointZero);
                                 Eigen::Isometry3d camera_to_kinematic = tf2::transformToEigen(camera_pose);
-                                target_position = camera_to_kinematic * target_relative_position;
+                                target_position = camera_to_kinematic * target_camera_position;
                                 controller_status = ControllerStatus::ARM_MOVING;
                                 // store target position and use it later, DO NOT MOVE NOW!
 
                                 // Debug print:
                                 RCLCPP_DEBUG_STREAM(this->get_logger(), "Target obtained: ");
-                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Target in camera frame: " << std::endl << target_relative_position);
+                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Target in camera frame: " << std::endl << target_camera_position);
                                 RCLCPP_DEBUG_STREAM(this->get_logger(), "Rotation: " << std::endl << camera_to_kinematic.rotation());
                                 RCLCPP_DEBUG_STREAM(this->get_logger(), "Translation: " << std::endl << camera_to_kinematic.translation());    
                                 RCLCPP_DEBUG_STREAM(this->get_logger(), "Target in arm base frame: " << std::endl << target_position);                            
@@ -208,7 +247,17 @@ namespace arm_mazzolini
 
             case ControllerStatus::POSITIONING:
             {
-                // TODO: passare a 2 1/2 D
+                // Here I just store position for visual servoing, control is done in visual_control function (2nd timer)
+                if(!sphere_detector->IBTargetPosition(rgb_msg, depth_msg, target_feature)) {
+                    RCLCPP_INFO(this->get_logger(), "Target lost!");
+                    target_buffer.clear();
+                    controller_status = ControllerStatus::NO_TARGET;
+                    return;
+                }
+                else {
+
+                    target_camera_position = sphere_detector->PBTargetPosition(target_feature);
+                }
                 break;
             }
 
@@ -221,13 +270,55 @@ namespace arm_mazzolini
         // TODO: altro da aggiungere?
     }
 
+    void WeederController::joint_states_callback(
+        const sensor_msgs::msg::JointState::SharedPtr msg)
+    {
+
+        if (controller_status != ControllerStatus::POSITIONING && controller_status != ControllerStatus::ARM_MOVING) {
+            return;
+        }
+        int idx1 = -1;
+        int idx2 = -1;
+
+        for (size_t i = 0; i < msg->name.size(); ++i) {
+            if (msg->name[i] == joint_names[0]) {
+                idx1 = static_cast<int>(i);
+            }
+            else if (msg->name[i] == joint_names[1]) {
+                idx2 = static_cast<int>(i);
+            }
+        }
+
+        // Controllo di sicurezza
+        if (idx1 < 0 || idx2 < 0) {
+            RCLCPP_WARN_THROTTLE(
+                this->get_logger(),
+                *this->get_clock(),
+                2000,
+                "joint1 or joint2 not found in /joint_states"
+            );
+            return;
+        }
+
+        // Copia le posizioni
+        joint_states[0] = msg->position[idx1];
+        joint_states[1] = msg->position[idx2];
+
+        RCLCPP_DEBUG(
+            this->get_logger(),
+            "Joint states updated: joint1=%.3f joint2=%.3f",
+            joint_states[0],
+            joint_states[1]
+        );
+    }
+
     
-    void WeederController::timer_callback()
+    void WeederController::pose_timer_callback()
     {
         // check if transform is available
         if (!tf_buffer->canTransform("odom", "base_link", tf2::TimePointZero)) {
             RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Transform odom->base_link not available yet");
-            timer->reset(); 
+            pose_timer->reset(); 
             return;
         }
         
@@ -281,8 +372,7 @@ namespace arm_mazzolini
                     ErrorType error_type;
                     std::vector<double> joint_angles;
                     if (arm_kinematic->computeIK(target_position, joint_angles, error_type)){
-                        // RCLCPP_INFO_STREAM(this->get_logger(), "Arm moving to: " << joint_angles[0] << ", " << joint_angles[1]);                        
-                        controller_status = ControllerStatus::POSITIONING;
+                        // RCLCPP_INFO_STREAM(this->get_logger(), "Arm moving to: " << joint_angles[0] << ", " << joint_angles[1]); 
                         send_joint_trajectory(joint_angles);
                     }
                     else {
@@ -343,11 +433,11 @@ namespace arm_mazzolini
             RCLCPP_ERROR(this->get_logger(), "Joint angles size does not match joint names size");
             return;
         }
-        if (vectors_are_equal(joint_angles, last_joint_values)) {
+        if (vectors_are_equal(joint_angles, last_joint_angles)) {
             RCLCPP_DEBUG(this->get_logger(), "Joint angles are the same as last sent, not sending trajectory");
             return;
         }
-        last_joint_values = joint_angles;
+        last_joint_angles = joint_angles;
         goal_msg.trajectory.points.clear();
         trajectory_msgs::msg::JointTrajectoryPoint point;
         point.positions = joint_angles;
@@ -362,48 +452,22 @@ namespace arm_mazzolini
         switch (result.code) {
             case rclcpp_action::ResultCode::SUCCEEDED:
             {
-                if(controller_status != ControllerStatus::POSITIONING) {
-                    return;
+                if(controller_status == ControllerStatus::ARM_MOVING) {
+                    controller_status = ControllerStatus::POSITIONING;
                 }
 
-                // TODO: change next part to add IBVS
-                
-                RCLCPP_DEBUG(this->get_logger(), "BYE BYE PLANT!");
-
-                controller_status = ControllerStatus::LASERING; 
-
-                geometry_msgs::msg::PointStamped lasered_position;
-                try {
-                    geometry_msgs::msg::TransformStamped arm_pose = tf_buffer->lookupTransform("odom", "kinematic_link", tf2::TimePointZero);
-                    Eigen::Isometry3d kinematic_to_base = tf2::transformToEigen(arm_pose);
-                    Eigen::Vector3d absolute_position = kinematic_to_base * target_position;
-                    lasered_position.point = tf2::toMsg(absolute_position);
-                    lasered_position.header.stamp = this->now();
-                    lasered_position.header.frame_id = "odom";
-                    laser_pub->publish(lasered_position);
-
-                }
-                catch (tf2::TransformException &ex) {
-                    RCLCPP_WARN_THROTTLE(
-                        this->get_logger(),
-                        *(this->get_clock()), 
-                        message_throttle_ms, 
-                        "Could not transform odom to kinematic_link: %s", ex.what());
-                }                     
-
-                controller_status = ControllerStatus::NO_TARGET;
-                return;
+                break;
             }
                 // TODO: handle other cases
             case rclcpp_action::ResultCode::ABORTED:
                 RCLCPP_ERROR(this->get_logger(), "Joint trajectory execution aborted.");
-                return;
+                break;
             case rclcpp_action::ResultCode::CANCELED:
                 RCLCPP_ERROR(this->get_logger(), "Joint trajectory execution canceled.");
-                return;
+                break;
             default:
                 RCLCPP_ERROR(this->get_logger(), "Unknown result code.");
-                return;
+                break;
         }
 
     }
@@ -419,6 +483,225 @@ namespace arm_mazzolini
             }
         }
         return true;
+    }
+
+    void WeederController::control_callback()
+    {
+
+        if(controller_status != ControllerStatus::POSITIONING) {
+            return;
+        }
+        else if (target_feature.isZero()) {
+            joint_states = WeederController::PBVS_control(target_camera_position);
+        }
+        else {
+            joint_states = WeederController::IBVS_control(target_feature);
+        }
+
+        send_joint_trajectory(joint_states);
+        
+
+        // double dt = static_cast<double>(control_dt) / 1000.0;
+        // Eigen::Vector3d error;
+
+        // if (filtering) {
+        //     // Smoothing Z
+        //     z_filtered = alpha.z() * target_camera_position.z() + (1 - alpha.z()) * z_filtered;
+        //     target_camera_position.z() = z_filtered;
+
+        //     // Computing error
+        //     error = desired_camera_position - target_camera_position;
+
+        //     // Smoothing error
+        //     error_filtered = beta.cwiseProduct(error) + (Eigen::Vector3d(1.0, 1.0, 1.0) - beta).cwiseProduct(error_filtered);
+        //     error = error_filtered;            
+        // }
+        // else {
+        //     // Computing error
+        //     error = desired_camera_position - target_camera_position;
+        // }
+
+        // // Control law
+        // Eigen::Vector3d dS = lambda.cwiseProduct(error) * dt;
+
+        // if (std::sqrt(error.x() * error.x() + error.y() * error.y())  < control_threshold) {
+        //     RCLCPP_INFO(this->get_logger(), "Target reached within threshold, activating laser");
+        //     activate_laser();
+        //     return;
+        // }
+
+        // Eigen::Vector3d current_position;
+        // ErrorType error_type;
+
+        // if (!arm_kinematic->computeFK(joint_states, current_position, error_type)) {
+        //     RCLCPP_WARN(this->get_logger(), "Sent empty joint states to forward kinematic");
+        //     return;
+        // }
+
+        // geometry_msgs::msg::TransformStamped camera_pose;
+        // try {
+        //     camera_pose = tf_buffer->lookupTransform("kinematic_link", "camera_kinematic", tf2::TimePointZero);
+        // }
+        // catch (tf2::TransformException &ex) {
+        //     RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Could not transform camera to kinematic_link: %s", ex.what());
+        //     return;
+        // }
+        // Eigen::Isometry3d camera_to_kinematic = tf2::transformToEigen(camera_pose);
+
+        // Eigen::Vector3d current_camera_position = camera_to_kinematic.inverse() * current_position;
+        // target_camera_position = current_camera_position + dS;
+        // target_position = camera_to_kinematic * target_camera_position;
+
+        // //Debug prints:
+        // RCLCPP_INFO(this->get_logger(), "========================================");
+        // RCLCPP_INFO_STREAM(this->get_logger(), "Target camera position: " << target_camera_position.transpose());
+        // RCLCPP_INFO_STREAM(this->get_logger(), "Current camera position: " << current_camera_position.transpose() << " ............ THIS VALUE SHOULD BE FIXED");
+        // RCLCPP_INFO_STREAM(this->get_logger(), "Target position: " << target_position.transpose());
+        // RCLCPP_INFO_STREAM(this->get_logger(), "Error: " << error.transpose());
+        // RCLCPP_INFO_STREAM(this->get_logger(), "dS: " << dS.transpose());
+        // RCLCPP_INFO(this->get_logger(), "========================================");
+
+        // std::vector<double> joint_angles;
+
+        // if (arm_kinematic->computeIK(target_position, joint_angles, error_type)){
+        //     send_joint_trajectory(joint_angles);
+        //     }
+        // else {
+        //     // TODO: check every case
+        //     switch (error_type) {
+        //         case ErrorType::TARGET_EMPTY:
+        //         {
+        //             RCLCPP_WARN(this->get_logger(), "Sent empty target position, check for error");
+        //             break;
+        //         }
+        //         case ErrorType::TARGET_TOO_FAR:
+        //         {
+        //             RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Get closer, target out of reach.");
+        //             double r = std::sqrt(target_position.x()*target_position.x() + target_position.y()*target_position.y());
+        //             RCLCPP_INFO_STREAM_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "r = " << r << " l1 + l2 = " << (l1 + l2));
+        //             // TODO: print position to check if calculations are correct
+        //             break;
+        //         }
+        //         case ErrorType::EXCLUSION_ZONE:
+        //         {
+        //             RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Target unreachable, move around obstacles");
+        //             break;
+        //         }
+        //     }
+        // }
+    }
+
+    std::vector<double> WeederController::PBVS_control(const Eigen::Vector3d& center)
+    {
+        double dt = static_cast<double>(control_dt) / 1000.0;
+
+        // Errore cartesiano nel frame camera
+        Eigen::Vector3d e_p = center - desired_position;
+
+        // Velocità camera
+        Eigen::Vector3d v_c = -lambda * e_p;
+
+        // Rotazione camera -> EE (costante, da TF)
+        Eigen::Isometry3d camera_to_EE;
+        try {
+            geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("laser", "camera_kinematic", tf2::TimePointZero);
+            camera_to_EE = tf2::transformToEigen(camera_pose);
+        }
+        catch (tf2::TransformException &ex) {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Could not transform camera_kinematic to kinematic_link: %s", ex.what());
+            return {joint_states[0], joint_states[1]}; // return current joint states to avoid sending empty trajectory
+        }
+        Eigen::Matrix3d R_ec = camera_to_EE.rotation();
+
+        // Velocità EE
+        Eigen::Vector3d v_e = R_ec * v_c;
+
+        // Jacobiano SCARA (EE wrt base)
+        Eigen::Matrix3d J = arm_kinematic->computeScaraJacobian(joint_states);
+
+        // Velocità giunti
+        Eigen::Vector3d q_dot = J.inverse() * v_e;
+
+        // Integrazione
+        auto q = Eigen::Vector3d(joint_states[0], joint_states[1], 0.0);
+        Eigen::Vector3d q_next = q + q_dot * dt;
+
+        return {q_next(0), q_next(1)};
+    }
+
+    std::vector<double> WeederController::IBVS_control(const Eigen::Vector3d& feature)
+    {
+        double u = feature(0);
+        double v = feature(1);
+        double Z = feature(2);
+
+        double dt = static_cast<double>(control_dt) / 1000.0;
+
+        // Errore visivo
+        Eigen::Vector3d e_s = feature - desired_feature;
+
+        // Interaction matrix simplified for this case (depth camera + only translation)
+        Eigen::Matrix3d L;
+        L <<    -1.0 / Z,   0.0,        u / Z,
+                0.0,        -1.0 / Z,   v / Z,
+                0.0,        0.0,        -1.0;
+
+        // Velocità camera
+        Eigen::Vector3d v_c = -lambda * L.inverse() * e_s;
+       
+        // Rotazione camera -> EE (costante, da TF)
+        Eigen::Isometry3d camera_to_EE;
+        try {
+            geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("laser", "camera_kinematic", tf2::TimePointZero);
+            camera_to_EE = tf2::transformToEigen(camera_pose);
+        }
+        catch (tf2::TransformException &ex) {
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Could not transform camera_kinematic to kinematic_link: %s", ex.what());
+            return {joint_states[0], joint_states[1]}; // return current joint states to avoid sending empty trajectory
+        }
+        Eigen::Matrix3d R_ec = camera_to_EE.rotation();
+
+        // Velocità EE
+        Eigen::Vector3d v_e = R_ec * v_c;
+
+        // Jacobiano SCARA
+        Eigen::Matrix3d J = arm_kinematic->computeScaraJacobian(joint_states);
+
+        // Velocità giunti
+        Eigen::Vector3d q_dot = J.inverse() * v_e;
+
+        // Integrazione
+        auto q = Eigen::Vector3d(joint_states[0], joint_states[1], 0.0);
+        Eigen::Vector3d q_next = q + q_dot * dt;
+
+        return {q_next(0), q_next(1)};
+    }
+
+    void WeederController::activate_laser()
+    {
+        controller_status = ControllerStatus::LASERING;
+        geometry_msgs::msg::PointStamped lasered_position;
+        try {
+            // TODO: remove odom and use global fixed frame
+            geometry_msgs::msg::TransformStamped arm_pose = tf_buffer->lookupTransform("odom", "kinematic_link", tf2::TimePointZero);
+            Eigen::Isometry3d kinematic_to_base = tf2::transformToEigen(arm_pose);
+            Eigen::Vector3d absolute_position = kinematic_to_base * target_position;
+            lasered_position.point = tf2::toMsg(absolute_position);
+            lasered_position.header.stamp = this->now();
+            lasered_position.header.frame_id = "odom";
+            laser_pub->publish(lasered_position);
+
+        }
+        catch (tf2::TransformException &ex) {
+            RCLCPP_WARN_THROTTLE(
+                this->get_logger(),
+                *(this->get_clock()), 
+                message_throttle_ms, 
+                "Could not transform odom to kinematic_link: %s", ex.what());
+        }                     
+
+        controller_status = ControllerStatus::NO_TARGET;
+        return;
     }
 
 } // namespace arm mazzolini

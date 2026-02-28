@@ -52,11 +52,67 @@ namespace arm_mazzolini {
         }
     }
 
+    bool ArmKinematic::computeFK(const std::vector<double>& theta,
+                             Eigen::Vector3d& position,
+                             ErrorType& error_type)
+    {
+        // Check input validity
+        if (theta.size() != 2) {
+            error_type = ErrorType::TARGET_EMPTY;
+            return false;
+        }
+
+        double theta1 = theta[0];
+        double theta2 = theta[1];
+
+        // Forward kinematics for planar RR arm
+        double x = l1_ * std::cos(theta1)
+                + l2_ * std::cos(theta1 + theta2);
+
+        double y = l1_ * std::sin(theta1)
+                + l2_ * std::sin(theta1 + theta2);
+
+        position.x() = x;
+        position.y() = y;
+        position.z() = 0.0;
+
+        return true;
+    }
+
     double ArmKinematic::normalizeAngle(double angle)
     {
         while (angle < -M_PI) angle += 2 * M_PI;
         while (angle > M_PI) angle -= 2 * M_PI;
         return angle;
+    }
+
+    Eigen::Matrix2d ArmKinematic::computeJacobian(const std::vector<double>& theta)
+    {
+        double theta1 = theta[0];
+        double theta2 = theta[1];
+
+        double s1  = std::sin(theta1);
+        double c1  = std::cos(theta1);
+        double s12 = std::sin(theta1 + theta2);
+        double c12 = std::cos(theta1 + theta2);
+
+        Eigen::Matrix2d J;
+
+        J << - l1_ * s1 - l2_* s12,   -l2_ * s12, 
+            l1_ * c1 + l2_ * c12,    l2_ * c12;
+
+        return J;
+    }
+
+    Eigen::Matrix3d ArmKinematic::computeScaraJacobian(const std::vector<double>& theta)
+    {
+        // this function provides Jacobian with an additional row for z-axis
+
+        Eigen::Matrix2d J_planar = computeJacobian(theta);
+        Eigen::Matrix3d J_scara = Eigen::Matrix3d::Zero();
+        J_scara.block<2, 2>(0, 0) = J_planar;
+        J_scara(2, 2) = 1.0;
+        return J_scara;
     }
 
 } // namespace arm_mazzolini

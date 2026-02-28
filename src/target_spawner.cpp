@@ -29,10 +29,10 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
     laser_position_sub = this->create_subscription<geometry_msgs::msg::PointStamped>(
         "/lasered_position",10, std::bind(&TargetSpawner::laser_callback, this, std::placeholders::_1)
     );
-    pose_sub = create_subscription<geometry_msgs::msg::PoseArray>(
-      "/model/robot/pose", 10,
-      std::bind(&TargetSpawner::pose_callback, this, std::placeholders::_1)
-    );
+    // pose_sub = create_subscription<geometry_msgs::msg::PoseArray>(
+    //   "/model/robot/pose", 10,
+    //   std::bind(&TargetSpawner::pose_callback, this, std::placeholders::_1)
+    // );
 
     // TF
     tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -45,31 +45,31 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
     );
 }
 
-void TargetSpawner::pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
-{
-    if (msg->poses.empty()) return;
+// void TargetSpawner::pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
+// {
+//     if (msg->poses.empty()) return;
 
-    geometry_msgs::msg::TransformStamped tf;
-    tf.header = msg->header;
-    tf.transform.translation.x = msg->poses[0].position.x;
-    tf.transform.translation.y = msg->poses[0].position.y;
-    tf.transform.translation.z = msg->poses[0].position.z;
-    tf.transform.rotation = msg->poses[0].orientation;
+//     geometry_msgs::msg::TransformStamped tf;
+//     tf.header = msg->header;
+//     tf.transform.translation.x = msg->poses[0].position.x;
+//     tf.transform.translation.y = msg->poses[0].position.y;
+//     tf.transform.translation.z = msg->poses[0].position.z;
+//     tf.transform.rotation = msg->poses[0].orientation;
 
-    robot_pose_ = tf2::transformToEigen(tf);
+//     robot_pose_ = tf2::transformToEigen(tf);
 
-    RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000, "Received robot pose: [%.2f, %.2f, %.2f]", robot_pose_.translation().x(), robot_pose_.translation().y(), robot_pose_.translation().z());
+//     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000, "Received robot pose: [%.2f, %.2f, %.2f]", robot_pose_.translation().x(), robot_pose_.translation().y(), robot_pose_.translation().z());
 
-}
+// }
 
 void TargetSpawner::timer_callback()
 {
     // Get robot pose
     geometry_msgs::msg::TransformStamped transformStamped;
 
-    RCLCPP_INFO(this->get_logger(), "============================================================================");
-    RCLCPP_INFO(this->get_logger(), "Spawning new target...");
-    RCLCPP_INFO(this->get_logger(), "============================================================================");
+    // RCLCPP_INFO(this->get_logger(), "============================================================================");
+    // RCLCPP_INFO(this->get_logger(), "Spawning new target...");
+    // RCLCPP_INFO(this->get_logger(), "============================================================================");
 
     // ===========================================================================================================================================
     //              TODO: fare chiarezza qui

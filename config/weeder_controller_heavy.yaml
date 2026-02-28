@@ -82,6 +82,16 @@ weeder_controller:
     depth_roi_size: 5
     mask_type: HSV_red # options: HSV_red, ExG_threshold, ExG_Otsu, ExGR. Default: HSV_red
 
+    visual_servoing:
+      filtering: false
+      alpha: [1.0, 1.0, 0.4] # for target_camera_position (1.0 = no filtering)
+      beta: [0.6, 0.6, 0.6] # for error [dx, dy, dz] (1.0 = no filtering)
+      lambda: [0.8, 0.8, 0.4] # controller gain (it's not a filter option, it's always active)
+      pcontroller_period_ms: 100 # (called dt in the node) remeber 0.0 < lambda*dt < 2.0 for stbility
+      smoothing: 1.2 # 1.0 - 1.5 = trajectories are slower than control, if < 1.0 faster trajectories, possibile jerk
+      control_threshold: 0.005 # stop condition for visual servoing (meters)
+      desired_camera_position: [0.0, 0.0, 0.8] # in camera frame (meters)
+
 gazebo_target_visualizer:
   ros__parameters:
   # Colors are always RGBA

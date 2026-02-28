@@ -2,6 +2,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
+#include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
 #include "geometry_msgs/msg/point.hpp"
@@ -41,6 +42,7 @@ namespace arm_mazzolini
         std::string camera_rgb_topic;
         std::string camera_depth_topic;
         std::string camera_info_topic;
+        bool filtering;
 
         // callback period
         int tf_callback_period_ms;
@@ -56,7 +58,14 @@ namespace arm_mazzolini
         ControllerStatus controller_status;
 
         // Image parameters
-        Eigen::Vector3d target_position; // x, y, z position of the target in arm_base_link frame
+        bool camera_initialized = false;
+        Eigen::Vector3d target_feature = Eigen::Vector3d::Zero(); // u, v, Z feature of the target in camera frame
+        Eigen::Vector3d target_position = Eigen::Vector3d::Zero();  // x, y, z position of the target in kinematic_link frame
+        Eigen::Vector3d target_camera_position = Eigen::Vector3d::Zero();  // x, y, z position of the target in camera_kinematic frame
+        Eigen::Vector3d desired_feature; // u, v, Z desired feature of the target in camera frame
+        Eigen::Vector3d desired_position; // x, y, z desired position of the target in camera_kinematic frame, usually [0, 0, Z]
+        double z_filtered = 1.9; // initialized with approximate world height
+        Eigen::Vector3d error_filtered;
         std::vector<Eigen::Vector3d> target_buffer;
         size_t image_buffer_size;
         int frames_delay;
@@ -71,17 +80,31 @@ namespace arm_mazzolini
         Eigen::Isometry3d new_pose; // same but at next step
         const double pose_threshold = 1e-3;   
         
+        // Joint parameters
         std::vector<std::string> joint_names = {"joint1", "joint2"};
-        void declare_and_get_parameters();   
         const std::vector<double> initial_joint_values = {-M_PI/3, M_PI/3}; 
-        std::vector<double> last_joint_values;
+        std::vector<double> joint_states = initial_joint_values;
+        std::vector<double> last_joint_angles;
         const double joint_tolerance = 1e-2; // radians
+
+        // Timers
+        rclcpp::TimerBase::SharedPtr pose_timer;
+        rclcpp::TimerBase::SharedPtr control_timer;
+        int control_dt;
+        int trajectory_dt;
+
+        // Control and filter gains
+        Eigen::Vector3d alpha;
+        Eigen::Vector3d beta;
+        Eigen::Vector3d lambda;
+        double control_threshold; 
 
         // Messages
         control_msgs::action::FollowJointTrajectory::Goal goal_msg;
         rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SendGoalOptions goal_options;
 
         // Subscriptions and publishers
+        rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub;
         rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr joints_client;
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr laser_pub;
 
@@ -95,21 +118,27 @@ namespace arm_mazzolini
         // TF2 parameters
         std::unique_ptr<tf2_ros::Buffer> tf_buffer;
         std::shared_ptr<tf2_ros::TransformListener> tf_listener;
-        rclcpp::TimerBase::SharedPtr timer;
         rclcpp::Time last_warning_time;
-        double warning_period = 2.0; // seconds
         int trajectory_time_ms;
         const uint64_t message_throttle_ms = 1000; // for INFO and WARN messages using THROTTLE
+
+        // Functions
+        void declare_and_get_parameters();   
+        void send_joint_trajectory(const std::vector<double>& joint_angles);
+        bool vectors_are_equal(const std::vector<double>& vec1, const std::vector<double>& vec2);
+        void activate_laser();
+        std::vector<double> IBVS_control(const Eigen::Vector3d& feature);
+        std::vector<double> PBVS_control(const Eigen::Vector3d& center);
         
         // Callbacks
-        void timer_callback();
+        void joint_states_callback(const sensor_msgs::msg::JointState::SharedPtr msg);
+        void pose_timer_callback();
         void pose_callback(const geometry_msgs::msg::TransformStamped msg);
         void result_callback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult & result);
         void image_callback(const sensor_msgs::msg::Image::ConstSharedPtr rgb_msg,
                             const sensor_msgs::msg::Image::ConstSharedPtr depth_msg,
                             const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg);
-        void send_joint_trajectory(const std::vector<double>& joint_angles);
-        bool vectors_are_equal(const std::vector<double>& vec1, const std::vector<double>& vec2);
+        void control_callback();
 
         // Other packages
         std::unique_ptr<SphereDetector> sphere_detector;

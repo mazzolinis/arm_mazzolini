@@ -178,7 +178,7 @@ def generate_launch_description():
         # '/simulated_D435/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo', # Should I use it?
         '/simulated_D435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
         '/simulated_D435/image@sensor_msgs/msg/Image[gz.msgs.Image',
-        '/model/robot/pose@geometry_msgs/msg/Pose[gz.msgs.Pose',
+        '/model/weeder_robot/pose@geometry_msgs/msg/Pose[gz.msgs.Pose',
         ],
         condition=IfCondition(use_sim_time),
         output='screen'
@@ -193,8 +193,8 @@ def generate_launch_description():
                       controller_config_file],
         output = "screen"
     )
-    nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[gazebo_target_visualizer])])))
-
+    nodes.append(gazebo_target_visualizer) 
+    
     # rviz_target_visualizer = Node(
     #     package = "arm_mazzolini",
     #     executable = "rviz_target_visualizer",

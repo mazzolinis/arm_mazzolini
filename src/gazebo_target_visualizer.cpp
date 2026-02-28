@@ -66,82 +66,24 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
 
   auto point = msg->point;
   
-  // Sphere
-  std::string xml;
-  xml += R"(<?xml version="1.0"?>)";
-  xml += R"(<sdf version="1.8"><model name=")";
-  xml += current_target_name_;
-  xml += R"(">)";
-  xml += "<static>true</static>"; 
-  xml += "<pose>";
-  xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + " ";
-  xml += "0 0 0</pose>";
-  xml += R"(
-      <link name="link">
-        <!-- Disable gravity for this object -->
-        <gravity>false</gravity>  
-
-        <!-- VISUAL -->
-        <visual name="visual">
-          <geometry><sphere><radius>0.02</radius></sphere></geometry>
-          <material>)";
-  xml += "<ambient>" + color_to_string(ambient_) + "</ambient>";
-  xml += "<diffuse>" + color_to_string(diffuse_) + "</diffuse>";
-  xml += "<specular>" + color_to_string(specular_) + "</specular>";
-  xml += "<emissive>" + color_to_string(emissive_) + "</emissive>";
-  xml += "</material>";
-  xml += "</visual>";
-
-  xml += R"(
-        <!-- COLLISION (physics interaction) -->
-        <collision name="collision">
-          <geometry><sphere><radius>0.02</radius></sphere></geometry>
-          <surface>
-            <contact>
-              <ode>
-                <min_depth>0.001</min_depth>
-                <max_vel>0.0</max_vel>
-              </ode>
-            </contact>
-          </surface>
-        </collision>
-        
-        <!-- INERTIAL (mass properties) -->
-        <inertial>
-          <mass>0.1</mass>  <!-- Small mass -->
-          <inertia>
-            <ixx>0.0001</ixx>
-            <iyy>0.0001</iyy>
-            <izz>0.0001</izz>
-          </inertia>
-        </inertial>
-      </link>
-    </model>
-  </sdf>)";
-
-  // // Plant (with stl mesh, correct SDF format)
+  // // Sphere
   // std::string xml;
   // xml += R"(<?xml version="1.0"?>)";
   // xml += R"(<sdf version="1.8"><model name=")";
   // xml += current_target_name_;
   // xml += R"(">)";
-  // xml += "<static>true</static>";
+  // xml += "<static>true</static>"; 
   // xml += "<pose>";
   // xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + " ";
   // xml += "0 0 0</pose>";
   // xml += R"(
   //     <link name="link">
   //       <!-- Disable gravity for this object -->
-  //       <gravity>false</gravity>
+  //       <gravity>false</gravity>  
 
   //       <!-- VISUAL -->
   //       <visual name="visual">
-  //         <geometry>
-  //           <mesh>
-  //             <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/PlantSprout.stl</uri>
-  //             <scale>0.001 0.001 0.001</scale>
-  //           </mesh>
-  //         </geometry>
+  //         <geometry><sphere><radius>0.02</radius></sphere></geometry>
   //         <material>)";
   // xml += "<ambient>" + color_to_string(ambient_) + "</ambient>";
   // xml += "<diffuse>" + color_to_string(diffuse_) + "</diffuse>";
@@ -163,7 +105,7 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   //           </contact>
   //         </surface>
   //       </collision>
-
+        
   //       <!-- INERTIAL (mass properties) -->
   //       <inertial>
   //         <mass>0.1</mass>  <!-- Small mass -->
@@ -176,6 +118,69 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   //     </link>
   //   </model>
   // </sdf>)";
+
+  // Plant (with stl mesh, correct SDF format)
+  std::string xml;
+  xml += R"(<?xml version="1.0"?>)";
+  xml += R"(<sdf version="1.8"><model name=")";
+  xml += current_target_name_;
+  xml += R"(">)";
+  xml += "<static>true</static>";
+  xml += "<pose>";
+  xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + " ";
+  xml += "0 0 1.58</pose>";
+  xml += R"(
+      <link name="link">
+        <!-- Disable gravity for this object -->
+        <gravity>false</gravity>
+
+        <!-- VISUAL -->
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/PlantSproutOriented_millimeter.stl</uri>
+              <scale>2.0 2.0 2.0</scale>
+            </mesh>
+          </geometry>
+          <material>)";
+  xml += "<ambient>" + color_to_string(ambient_) + "</ambient>";
+  xml += "<diffuse>" + color_to_string(diffuse_) + "</diffuse>";
+  xml += "<specular>" + color_to_string(specular_) + "</specular>";
+  xml += "<emissive>" + color_to_string(emissive_) + "</emissive>";
+  xml += "</material>";
+  xml += "</visual>";
+
+  xml += R"(
+        <!-- COLLISION (physics interaction) -->
+        <collision name="collision">
+           <geometry>
+            <mesh>
+              <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/PlantSproutOriented_millimeter.stl</uri>
+              <scale>2.0 2.0 2.0</scale>
+            </mesh>
+          </geometry>
+          <surface>
+            <contact>
+              <ode>
+                <min_depth>0.001</min_depth>
+                <max_vel>0.0</max_vel>
+              </ode>
+            </contact>
+          </surface>
+        </collision>
+
+        <!-- INERTIAL (mass properties) -->
+        <inertial>
+          <mass>0.1</mass>  <!-- Small mass -->
+          <inertia>
+            <ixx>0.0001</ixx>
+            <iyy>0.0001</iyy>
+            <izz>0.0001</izz>
+          </inertia>
+        </inertial>
+      </link>
+    </model>
+  </sdf>)";
 
   auto request = std::make_shared<ros_gz_interfaces::srv::SpawnEntity::Request>();
   request->entity_factory.name = current_target_name_;

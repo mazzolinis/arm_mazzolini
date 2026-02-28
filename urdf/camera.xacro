@@ -47,7 +47,7 @@
                 <parent link="link2_light"/>
             </xacro:if>
             <child link="camera_link"/>
-            <origin xyz="${l2/3} 0 ${-h2-0.03}" rpy="${PI+PI/9} 0 ${-PI/2}"/>
+            <origin xyz="${l2/3} 0 ${-h2-0.03}" rpy="${PI+PI/18} 0 ${-PI/2}"/>
         </joint>
 
         <link name="camera_kinematic"/>

@@ -50,16 +50,16 @@ class TargetSpawner : public rclcpp::Node
         // Callbacks
         void timer_callback();
         void laser_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg);
-        void pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg);
+        // void pose_callback(const geometry_msgs::msg::Pose::SharedPtr msg);
 
         // Variables
-        const int spawn_period = 2; // seconds between laser and new target
+        const int spawn_period = 3; // seconds between laser and new target
         const double min_distance = 0.1;
         const double max_distance = 0.45;
         const double angle_range = M_PI / 6;
         // adding a new area to spawn target
         const double lato = 0.2;
-        Eigen::Vector3d center = Eigen::Vector3d(-0.06, -0.78, 1.9); 
+        Eigen::Vector3d center = Eigen::Vector3d(-0.08, -0.78, 1.85); 
         
         // Random numbers generators
         std::mt19937 gen;

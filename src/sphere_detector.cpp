@@ -19,10 +19,74 @@ namespace arm_mazzolini
         cy_ = info_msg->k[5];
     }
 
+    std::vector<double> SphereDetector::getCameraCenter()
+    {
+        return {cx_, cy_};
+    }
+
+    std::vector<double> SphereDetector::getCameraFocals()
+    {
+        return {fx_, fy_};
+    }
+
+    bool SphereDetector::IBTargetPosition(
+        const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
+        Eigen::Vector3d &centroid_feature)
+    {
+        cv::Point centroid;
+        double Z;
+        if (!DetectSphere(rgb_msg, depth_msg, centroid, Z))
+        {
+            return false;
+        }
+        else
+        {
+            // This is a feature, not a position, coordinates are u,v in pixels, not x,y in meters
+            centroid_feature.x() = centroid.x;
+            centroid_feature.y() = centroid.y;
+            centroid_feature.z() = Z;
+            return true;
+        }
+    }
+
+    bool SphereDetector::PBTargetPosition(
+        const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
+        const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
+        Eigen::Vector3d &centroid_position)
+    {
+        cv::Point centroid;
+        double Z;
+        if (!DetectSphere(rgb_msg, depth_msg, centroid, Z))
+        {
+            return false;
+        }
+        else
+        {
+            // Coordinates are in meters
+            centroid_position.x() = (centroid.x - cx_) * Z / fx_;
+            centroid_position.y() = (centroid.y - cy_) * Z / fy_;
+            centroid_position.z() = Z;
+            return true;
+        }
+    }
+
+    Eigen::Vector3d SphereDetector::PBTargetPosition(const Eigen::Vector3d &centroid_feature)
+    {
+        // This function is used not to evaluate again the images
+        Eigen::Vector3d centroid_position;
+        centroid_position.x() = (centroid_feature.x() - cx_) * centroid_feature.z() / fx_;
+        centroid_position.y() = (centroid_feature.y() - cy_) * centroid_feature.z() / fy_;
+        centroid_position.z() = centroid_feature.z();
+        return centroid_position;
+    }
+    
+
     bool SphereDetector::DetectSphere(
         const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
         const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
-        Eigen::Vector3d &center_position)
+        cv::Point &centroid,
+        double &Z)
     {
 
         // RGB analysis
@@ -40,13 +104,6 @@ namespace arm_mazzolini
         cv::Mat mask = createMask(rgb);
         mask = cleanMask(mask);
 
-        // Debug options
-        // cv::imshow("RGB", rgb);
-        // cv::imshow("HSV", hsv);
-        // cv::imshow("mask", mask);
-        // cv::waitKey(1);
-
-        cv::Point centroid;
         bool found = findLargestBlob(mask, centroid);
         if (!found)
         {
@@ -65,14 +122,8 @@ namespace arm_mazzolini
             return false;
         }
 
-        float Z = getDepthMedian(depth, centroid);
+        Z = getDepthMedian(depth, centroid);
 
-        // TODO: move this part to weeder controller and change it to IBVS
-        center_position.x() = (centroid.x - cx_) * Z / fx_;
-        center_position.y() = (centroid.y - cy_) * Z / fy_;
-        center_position.z() = Z;
-        // center_poistion is in camera frame, need to convert it
-        
         return true;
     }
 
@@ -202,19 +253,19 @@ namespace arm_mazzolini
     }
 
 
-    float SphereDetector::getDepthMedian(const cv::Mat& depth, const cv::Point& center)
+    double SphereDetector::getDepthMedian(const cv::Mat& depth, const cv::Point& center)
     {
         int half = depth_roi_size_/2;
-        std::vector<float> values;
-        for (int i = -half; i <= half; ++i)
+        std::vector<double> values;
+        for (int i = -half; i <= half; i++)
         {
-            for (int j = -half; j <= half; ++j)
+            for (int j = -half; j <= half; j++)
             {
                 int x = center.x + i;
                 int y = center.y + j;
                 if (x < 0 || y < 0 || x >= depth.cols || y >= depth.rows)
                     continue;
-                float d = depth.at<float>(y,x);
+                double d = depth.at<double>(y,x);
                 if (std::isfinite(d) && d > 0)
                     values.push_back(d);
             }

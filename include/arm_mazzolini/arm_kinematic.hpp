@@ -13,7 +13,10 @@ namespace arm_mazzolini {
     public:
         ArmKinematic(double l1, double l2);
         bool computeIK(const Eigen::Vector3d& position,std::vector<double>& theta, ErrorType& error_type);
+        bool computeFK(const std::vector<double>& theta, Eigen::Vector3d& position, ErrorType& error_type);
         double normalizeAngle(double angle);
+        Eigen::Matrix2d computeJacobian(const std::vector<double>& theta);
+        Eigen::Matrix3d computeScaraJacobian(const std::vector<double>& theta);
 
         private:
         double l1_;
