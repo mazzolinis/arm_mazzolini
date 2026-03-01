@@ -88,9 +88,10 @@ namespace arm_mazzolini
             this->declare_parameter("trajectory_time_ms", 250);
             this->declare_parameter("mask_type", std::string());
             this->declare_parameter("visual_servoing.filtering", true);
-            this->declare_parameter("visual_servoing.alpha", std::vector<double>());
+            // this->declare_parameter("visual_servoing.alpha", std::vector<double>());
             this->declare_parameter("visual_servoing.beta", std::vector<double>());
-            this->declare_parameter("visual_servoing.lambda", std::vector<double>());
+            this->declare_parameter("visual_servoing.lambda_IBVS", std::vector<double>());
+            this->declare_parameter("visual_servoing.lambda_PBVS", std::vector<double>());
             this->declare_parameter("visual_servoing.pcontroller_period_ms", int());
             this->declare_parameter("visual_servoing.smoothing", double());
             this->declare_parameter("visual_servoing.control_threshold", 0.005);
@@ -137,9 +138,14 @@ namespace arm_mazzolini
 
             // Visual servoing parameters
             filtering = this->get_parameter("visual_servoing.filtering").as_bool();
-            alpha = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.alpha").as_double_array().data());
+            // alpha = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.alpha").as_double_array().data());
             beta = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.beta").as_double_array().data());
-            lambda = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.lambda").as_double_array().data());
+
+            std::vector<double> lambda_IBVS_vec = this->get_parameter("visual_servoing.lambda_IBVS").as_double_array();
+            lambda_IBVS.diagonal() << lambda_IBVS_vec[0], lambda_IBVS_vec[1], lambda_IBVS_vec[2];
+            std::vector<double> lambda_PBVS_vec = this->get_parameter("visual_servoing.lambda_PBVS").as_double_array();
+            lambda_PBVS.diagonal() << lambda_PBVS_vec[0], lambda_PBVS_vec[1], lambda_PBVS_vec[2];
+            
             control_dt = this->get_parameter("visual_servoing.pcontroller_period_ms").as_int();
             double smoothing = this->get_parameter("visual_servoing.smoothing").as_double();
             trajectory_dt = static_cast<int>(control_dt * smoothing);
@@ -441,7 +447,12 @@ namespace arm_mazzolini
         goal_msg.trajectory.points.clear();
         trajectory_msgs::msg::JointTrajectoryPoint point;
         point.positions = joint_angles;
-        point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_time_ms));
+        if (controller_status == ControllerStatus::POSITIONING) {
+            point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_dt));
+        }
+        else {
+            point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_time_ms));
+        }
         goal_msg.trajectory.points.push_back(point);
 
         joints_client->async_send_goal(goal_msg, goal_options);
@@ -469,7 +480,6 @@ namespace arm_mazzolini
                 RCLCPP_ERROR(this->get_logger(), "Unknown result code.");
                 break;
         }
-
     }
 
     bool WeederController::vectors_are_equal(const std::vector<double>& vec1, const std::vector<double>& vec2)
@@ -492,103 +502,21 @@ namespace arm_mazzolini
             return;
         }
         else if (target_feature.isZero()) {
-            joint_states = WeederController::PBVS_control(target_camera_position);
+            std::vector<double> joint_goal = WeederController::PBVS_control(target_camera_position);
+            send_joint_trajectory(joint_goal);
         }
         else {
-            joint_states = WeederController::IBVS_control(target_feature);
+            double pixel_error = std::sqrt(std::pow(target_feature.x() - desired_feature.x(), 2) + std::pow(target_feature.y() - desired_feature.y(), 2));
+
+            if (pixel_error < control_threshold) {
+                activate_laser();
+                target_feature.setZero(); 
+            }
+            else {
+                std::vector<double> joint_goal = WeederController::IBVS_control(target_feature);
+                send_joint_trajectory(joint_goal);
+            }
         }
-
-        send_joint_trajectory(joint_states);
-        
-
-        // double dt = static_cast<double>(control_dt) / 1000.0;
-        // Eigen::Vector3d error;
-
-        // if (filtering) {
-        //     // Smoothing Z
-        //     z_filtered = alpha.z() * target_camera_position.z() + (1 - alpha.z()) * z_filtered;
-        //     target_camera_position.z() = z_filtered;
-
-        //     // Computing error
-        //     error = desired_camera_position - target_camera_position;
-
-        //     // Smoothing error
-        //     error_filtered = beta.cwiseProduct(error) + (Eigen::Vector3d(1.0, 1.0, 1.0) - beta).cwiseProduct(error_filtered);
-        //     error = error_filtered;            
-        // }
-        // else {
-        //     // Computing error
-        //     error = desired_camera_position - target_camera_position;
-        // }
-
-        // // Control law
-        // Eigen::Vector3d dS = lambda.cwiseProduct(error) * dt;
-
-        // if (std::sqrt(error.x() * error.x() + error.y() * error.y())  < control_threshold) {
-        //     RCLCPP_INFO(this->get_logger(), "Target reached within threshold, activating laser");
-        //     activate_laser();
-        //     return;
-        // }
-
-        // Eigen::Vector3d current_position;
-        // ErrorType error_type;
-
-        // if (!arm_kinematic->computeFK(joint_states, current_position, error_type)) {
-        //     RCLCPP_WARN(this->get_logger(), "Sent empty joint states to forward kinematic");
-        //     return;
-        // }
-
-        // geometry_msgs::msg::TransformStamped camera_pose;
-        // try {
-        //     camera_pose = tf_buffer->lookupTransform("kinematic_link", "camera_kinematic", tf2::TimePointZero);
-        // }
-        // catch (tf2::TransformException &ex) {
-        //     RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Could not transform camera to kinematic_link: %s", ex.what());
-        //     return;
-        // }
-        // Eigen::Isometry3d camera_to_kinematic = tf2::transformToEigen(camera_pose);
-
-        // Eigen::Vector3d current_camera_position = camera_to_kinematic.inverse() * current_position;
-        // target_camera_position = current_camera_position + dS;
-        // target_position = camera_to_kinematic * target_camera_position;
-
-        // //Debug prints:
-        // RCLCPP_INFO(this->get_logger(), "========================================");
-        // RCLCPP_INFO_STREAM(this->get_logger(), "Target camera position: " << target_camera_position.transpose());
-        // RCLCPP_INFO_STREAM(this->get_logger(), "Current camera position: " << current_camera_position.transpose() << " ............ THIS VALUE SHOULD BE FIXED");
-        // RCLCPP_INFO_STREAM(this->get_logger(), "Target position: " << target_position.transpose());
-        // RCLCPP_INFO_STREAM(this->get_logger(), "Error: " << error.transpose());
-        // RCLCPP_INFO_STREAM(this->get_logger(), "dS: " << dS.transpose());
-        // RCLCPP_INFO(this->get_logger(), "========================================");
-
-        // std::vector<double> joint_angles;
-
-        // if (arm_kinematic->computeIK(target_position, joint_angles, error_type)){
-        //     send_joint_trajectory(joint_angles);
-        //     }
-        // else {
-        //     // TODO: check every case
-        //     switch (error_type) {
-        //         case ErrorType::TARGET_EMPTY:
-        //         {
-        //             RCLCPP_WARN(this->get_logger(), "Sent empty target position, check for error");
-        //             break;
-        //         }
-        //         case ErrorType::TARGET_TOO_FAR:
-        //         {
-        //             RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Get closer, target out of reach.");
-        //             double r = std::sqrt(target_position.x()*target_position.x() + target_position.y()*target_position.y());
-        //             RCLCPP_INFO_STREAM_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "r = " << r << " l1 + l2 = " << (l1 + l2));
-        //             // TODO: print position to check if calculations are correct
-        //             break;
-        //         }
-        //         case ErrorType::EXCLUSION_ZONE:
-        //         {
-        //             RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Target unreachable, move around obstacles");
-        //             break;
-        //         }
-        //     }
-        // }
     }
 
     std::vector<double> WeederController::PBVS_control(const Eigen::Vector3d& center)
@@ -596,10 +524,21 @@ namespace arm_mazzolini
         double dt = static_cast<double>(control_dt) / 1000.0;
 
         // Errore cartesiano nel frame camera
-        Eigen::Vector3d e_p = center - desired_position;
+        Eigen::Vector3d e_p;
+        if (filtering) {
+            e_p = center - desired_position;
+
+            // Smoothing error
+            e_p_filtered = beta.cwiseProduct(e_p) + (Eigen::Vector3d(1.0, 1.0, 1.0) - beta).cwiseProduct(e_p_filtered);
+            e_p = e_p_filtered;            
+        }
+        else {
+            // Computing error
+             e_p = center - desired_position;
+        }
 
         // Velocità camera
-        Eigen::Vector3d v_c = -lambda * e_p;
+        Eigen::Vector3d v_c = - (lambda_PBVS * e_p);
 
         // Rotazione camera -> EE (costante, da TF)
         Eigen::Isometry3d camera_to_EE;
@@ -631,14 +570,26 @@ namespace arm_mazzolini
 
     std::vector<double> WeederController::IBVS_control(const Eigen::Vector3d& feature)
     {
-        double u = feature(0);
-        double v = feature(1);
-        double Z = feature(2);
+        double u = feature.x();
+        double v = feature.y();
+        double Z = feature.z();
 
         double dt = static_cast<double>(control_dt) / 1000.0;
 
         // Errore visivo
-        Eigen::Vector3d e_s = feature - desired_feature;
+        Eigen::Vector3d e_s;
+
+        if (filtering) {
+            e_s = feature - desired_feature;
+
+            // Smoothing error
+            e_s_filtered = beta.cwiseProduct(e_s) + (Eigen::Vector3d(1.0, 1.0, 1.0) - beta).cwiseProduct(e_s_filtered);
+            e_s = e_s_filtered;            
+        }
+        else {
+            // Computing error
+            e_s = feature - desired_feature;
+        }
 
         // Interaction matrix simplified for this case (depth camera + only translation)
         Eigen::Matrix3d L;
@@ -647,7 +598,7 @@ namespace arm_mazzolini
                 0.0,        0.0,        -1.0;
 
         // Velocità camera
-        Eigen::Vector3d v_c = -lambda * L.inverse() * e_s;
+        Eigen::Vector3d v_c = -(lambda_IBVS * L.inverse() * e_s);
        
         // Rotazione camera -> EE (costante, da TF)
         Eigen::Isometry3d camera_to_EE;
@@ -671,6 +622,7 @@ namespace arm_mazzolini
         Eigen::Vector3d q_dot = J.inverse() * v_e;
 
         // Integrazione
+        // Potrei aggiungere un terzo joint state per considerare la focale del laser
         auto q = Eigen::Vector3d(joint_states[0], joint_states[1], 0.0);
         Eigen::Vector3d q_next = q + q_dot * dt;
 
@@ -693,11 +645,7 @@ namespace arm_mazzolini
 
         }
         catch (tf2::TransformException &ex) {
-            RCLCPP_WARN_THROTTLE(
-                this->get_logger(),
-                *(this->get_clock()), 
-                message_throttle_ms, 
-                "Could not transform odom to kinematic_link: %s", ex.what());
+            RCLCPP_WARN(this->get_logger(), "Could not transform odom to kinematic_link: %s", ex.what());
         }                     
 
         controller_status = ControllerStatus::NO_TARGET;

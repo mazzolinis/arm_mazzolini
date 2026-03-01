@@ -30,15 +30,9 @@ namespace arm_mazzolini
 
         private:
 
-        // =====================================================================
-        //                        TODO: RIORDINARE LE VARIABILI!!!!!
-        // =====================================================================        
-
         // Parameters from yaml
         double l1;
         double l2;
-        std::array<double, 3> translation;
-        std::array<double, 3> rotation;
         std::string camera_rgb_topic;
         std::string camera_depth_topic;
         std::string camera_info_topic;
@@ -59,13 +53,6 @@ namespace arm_mazzolini
 
         // Image parameters
         bool camera_initialized = false;
-        Eigen::Vector3d target_feature = Eigen::Vector3d::Zero(); // u, v, Z feature of the target in camera frame
-        Eigen::Vector3d target_position = Eigen::Vector3d::Zero();  // x, y, z position of the target in kinematic_link frame
-        Eigen::Vector3d target_camera_position = Eigen::Vector3d::Zero();  // x, y, z position of the target in camera_kinematic frame
-        Eigen::Vector3d desired_feature; // u, v, Z desired feature of the target in camera frame
-        Eigen::Vector3d desired_position; // x, y, z desired position of the target in camera_kinematic frame, usually [0, 0, Z]
-        double z_filtered = 1.9; // initialized with approximate world height
-        Eigen::Vector3d error_filtered;
         std::vector<Eigen::Vector3d> target_buffer;
         size_t image_buffer_size;
         int frames_delay;
@@ -94,9 +81,17 @@ namespace arm_mazzolini
         int trajectory_dt;
 
         // Control and filter gains
-        Eigen::Vector3d alpha;
+        Eigen::Vector3d target_feature = Eigen::Vector3d::Zero(); // u, v, Z feature of the target in camera frame
+        Eigen::Vector3d target_position = Eigen::Vector3d::Zero();  // x, y, z position of the target in kinematic_link frame
+        Eigen::Vector3d target_camera_position = Eigen::Vector3d::Zero();  // x, y, z position of the target in camera_kinematic frame
+        Eigen::Vector3d desired_feature; // u, v, Z desired feature of the target in camera frame
+        Eigen::Vector3d desired_position; // x, y, z desired position of the target in camera_kinematic frame, usually [0, 0, Z]
+        Eigen::Vector3d e_s_filtered = Eigen::Vector3d::Zero();
+        Eigen::Vector3d e_p_filtered = Eigen::Vector3d::Zero();
+        // Eigen::Vector3d alpha; // Not used right now
         Eigen::Vector3d beta;
-        Eigen::Vector3d lambda;
+        Eigen::DiagonalMatrix<double, 3> lambda_IBVS;
+        Eigen::DiagonalMatrix<double, 3> lambda_PBVS;
         double control_threshold; 
 
         // Messages
