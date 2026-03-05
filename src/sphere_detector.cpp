@@ -42,9 +42,9 @@ namespace arm_mazzolini
         }
         else
         {
-            // This is a feature, not a position, coordinates are u,v in pixels, not x,y in meters
-            centroid_feature.x() = centroid.x;
-            centroid_feature.y() = centroid.y;
+            // This is a feature, not a position, coordinates are percentages of image size with [0,0] at the center
+            centroid_feature.x() = (centroid.x - cx_) / fx_;
+            centroid_feature.y() = (centroid.y - cy_) / fy_;
             centroid_feature.z() = Z;
             return true;
         }
@@ -75,8 +75,8 @@ namespace arm_mazzolini
     {
         // This function is used not to evaluate again the images
         Eigen::Vector3d centroid_position;
-        centroid_position.x() = (centroid_feature.x() - cx_) * centroid_feature.z() / fx_;
-        centroid_position.y() = (centroid_feature.y() - cy_) * centroid_feature.z() / fy_;
+        centroid_position.x() = centroid_feature.x() * centroid_feature.z();
+        centroid_position.y() = centroid_feature.y() * centroid_feature.z();
         centroid_position.z() = centroid_feature.z();
         return centroid_position;
     }
@@ -266,7 +266,7 @@ namespace arm_mazzolini
                 if (x < 0 || y < 0 || x >= depth.cols || y >= depth.rows)
                     continue;
                 double d = depth.at<double>(y,x);
-                if (std::isfinite(d) && d > 0)
+                if (std::isfinite(d) && d > 0.02)
                     values.push_back(d);
             }
         }

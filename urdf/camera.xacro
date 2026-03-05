@@ -9,35 +9,13 @@
     <xacro:property name="fps" value="30" />
     <xacro:property name="hfov" value="${PI/3}" />
     <xacro:property name="name_prefix" value="/simulated_D435" />
+    <xacro:property name="l_camera" value="0.06185"/>
+    <xacro:property name="h_camera" value="0.0083"/>
 
     <!-- TODO: This file is valid only in simulation, change use_sim_time if condition -->
     <xacro:macro name="depth_camera" params= "is_light use_sim_time">
 
-        <link name="camera_link">
-            <visual>
-                <geometry>
-                    <mesh filename="${camera_mesh}" scale="${scale}"/>
-                </geometry>
-                <material name="grey">
-                    <color rgba="0.6 0.6 0.6 1"/>
-                </material>
-                <origin xyz="0 0 0" rpy="0 0 0"/>
-            </visual>
-            <collision>
-                <geometry>
-                    <mesh filename="${camera_mesh}" scale="${scale}"/>
-                </geometry>
-                <origin xyz="0 0 0" rpy="0 0 0"/>
-            </collision>
-            <inertial>
-                <origin xyz="0 0 0" rpy="0 0 0"/>
-                <mass value="0.072"/>
-                <inertia ixx="0.000005"   ixy="0.0"           ixz="0.00000"
-                                            iyy="0.000005"    iyz="0.0"
-                                                                izz="0.000005"
-                />
-            </inertial>
-        </link>
+        <link name="camera_link"/>
     
         <joint name="camera_joint" type="fixed">
             <xacro:unless value="${is_light}">
@@ -47,7 +25,7 @@
                 <parent link="link2_light"/>
             </xacro:if>
             <child link="camera_link"/>
-            <origin xyz="${l2/3} 0 ${-h2-0.03}" rpy="${PI+PI/18} 0 ${-PI/2}"/>
+            <origin xyz="${l_camera} 0 ${h_camera}" rpy="${PI+PI/10} 0 ${-PI/2}"/>
         </joint>
 
         <link name="camera_kinematic"/>
@@ -55,7 +33,7 @@
         <joint name="camera_kinematic_joint" type="fixed">
             <parent link="camera_link"/>
             <child link="camera_kinematic"/>
-            <origin xyz="0 0 0.03" rpy="0 0 0"/>
+            <origin xyz="0 0 0.0" rpy="0 0 0"/>
         </joint>
 
         <link name="camera_optical_frame"/>
@@ -65,7 +43,7 @@
             <joint name="camera_optical_joint" type="fixed">
                 <parent link="camera_link"/>
                 <child link="camera_optical_frame"/>
-                <origin xyz="0 0 0.03" rpy="${PI/2} ${-PI/2} 0"/>
+                <origin xyz="0 0 0.003" rpy="${PI/2} ${-PI/2} 0"/>
             </joint>
         </xacro:if>
 

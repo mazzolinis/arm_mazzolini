@@ -92,7 +92,7 @@ namespace arm_mazzolini
             this->declare_parameter("visual_servoing.beta", std::vector<double>());
             this->declare_parameter("visual_servoing.lambda_IBVS", std::vector<double>());
             this->declare_parameter("visual_servoing.lambda_PBVS", std::vector<double>());
-            this->declare_parameter("visual_servoing.pcontroller_period_ms", int());
+            this->declare_parameter("visual_servoing.controller_period_ms", int());
             this->declare_parameter("visual_servoing.smoothing", double());
             this->declare_parameter("visual_servoing.control_threshold", 0.005);
             this->declare_parameter("visual_servoing.desired_feature", std::vector<double>());
@@ -145,12 +145,13 @@ namespace arm_mazzolini
             lambda_IBVS.diagonal() << lambda_IBVS_vec[0], lambda_IBVS_vec[1], lambda_IBVS_vec[2];
             std::vector<double> lambda_PBVS_vec = this->get_parameter("visual_servoing.lambda_PBVS").as_double_array();
             lambda_PBVS.diagonal() << lambda_PBVS_vec[0], lambda_PBVS_vec[1], lambda_PBVS_vec[2];
-            
-            control_dt = this->get_parameter("visual_servoing.pcontroller_period_ms").as_int();
+
+            control_dt = this->get_parameter("visual_servoing.controller_period_ms").as_int();
             double smoothing = this->get_parameter("visual_servoing.smoothing").as_double();
             trajectory_dt = static_cast<int>(control_dt * smoothing);
             control_threshold = this->get_parameter("visual_servoing.control_threshold").as_double();
             desired_feature = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.desired_feature").as_double_array().data());
+            
         } 
 
         catch(const rclcpp::exceptions::InvalidParameterTypeException& ex) {
@@ -411,6 +412,9 @@ namespace arm_mazzolini
             {
                 if (!new_pose.isApprox(old_pose, pose_threshold)) {
                     RCLCPP_INFO(this->get_logger(), "Mobile robot moved during POSITIONING");
+                    target_buffer.clear();
+                    target_feature.setZero();  
+                    target_camera_position.setZero();
                     controller_status = ControllerStatus::NO_TARGET;
                     joints_client->async_cancel_all_goals();
                 }
@@ -502,12 +506,17 @@ namespace arm_mazzolini
             return;
         }
         else if (target_feature.isZero()) {
-            std::vector<double> joint_goal = WeederController::PBVS_control(target_camera_position);
-            send_joint_trajectory(joint_goal);
+            // std::vector<double> joint_goal = WeederController::PBVS_control(target_camera_position);
+            // send_joint_trajectory(joint_goal);
+            // Pass because PBVS doesn't work, there is an error in measuring Z
+            return;
         }
         else {
             double pixel_error = std::sqrt(std::pow(target_feature.x() - desired_feature.x(), 2) + std::pow(target_feature.y() - desired_feature.y(), 2));
 
+            RCLCPP_INFO_STREAM(this->get_logger(), "target feature: " << target_feature.transpose());
+            RCLCPP_INFO_STREAM(this->get_logger(), "desired feature: " << desired_feature.transpose());
+            RCLCPP_INFO_STREAM(this->get_logger(), "pixel error: " << pixel_error);
             if (pixel_error < control_threshold) {
                 activate_laser();
                 target_feature.setZero(); 
@@ -519,14 +528,14 @@ namespace arm_mazzolini
         }
     }
 
-    std::vector<double> WeederController::PBVS_control(const Eigen::Vector3d& center)
+    std::vector<double> WeederController::PBVS_control(Eigen::Vector3d& target)
     {
         double dt = static_cast<double>(control_dt) / 1000.0;
 
         // Errore cartesiano nel frame camera
         Eigen::Vector3d e_p;
         if (filtering) {
-            e_p = center - desired_position;
+            e_p = target - desired_position;
 
             // Smoothing error
             e_p_filtered = beta.cwiseProduct(e_p) + (Eigen::Vector3d(1.0, 1.0, 1.0) - beta).cwiseProduct(e_p_filtered);
@@ -534,7 +543,7 @@ namespace arm_mazzolini
         }
         else {
             // Computing error
-             e_p = center - desired_position;
+             e_p = target - desired_position;
         }
 
         // Velocità camera
@@ -543,7 +552,7 @@ namespace arm_mazzolini
         // Rotazione camera -> EE (costante, da TF)
         Eigen::Isometry3d camera_to_EE;
         try {
-            geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("laser", "camera_kinematic", tf2::TimePointZero);
+            geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("end_effector", "camera_kinematic", tf2::TimePointZero);
             camera_to_EE = tf2::transformToEigen(camera_pose);
         }
         catch (tf2::TransformException &ex) {
@@ -565,14 +574,29 @@ namespace arm_mazzolini
         auto q = Eigen::Vector3d(joint_states[0], joint_states[1], 0.0);
         Eigen::Vector3d q_next = q + q_dot * dt;
 
+        RCLCPP_INFO(this->get_logger(), "======================DEBUG PBVS======================");
+        RCLCPP_INFO_STREAM(this->get_logger(), "Target position (m): " << target.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "Desired position (m): " << desired_position.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "Camera velocity (m/s): " << v_c.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "EE velocity (m/s): " << v_e.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "Joint velocity (rad/s): " << q_dot.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "Current joint angles (rad): " << q.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "Next joint angles (rad): " << q_next.transpose());
+        RCLCPP_INFO(this->get_logger(), "=====================================================");
+
+
         return {q_next(0), q_next(1)};
     }
 
-    std::vector<double> WeederController::IBVS_control(const Eigen::Vector3d& feature)
+    std::vector<double> WeederController::IBVS_control(Eigen::Vector3d& feature)
     {
+        // feature è già normalizzato
         double u = feature.x();
         double v = feature.y();
-        double Z = feature.z();
+        // if (feature.z() < 0.3) {
+        //     feature.z() = 0.8;
+        // }
+        double Z = feature.z(); 
 
         double dt = static_cast<double>(control_dt) / 1000.0;
 
@@ -591,19 +615,34 @@ namespace arm_mazzolini
             e_s = feature - desired_feature;
         }
 
-        // Interaction matrix simplified for this case (depth camera + only translation)
-        Eigen::Matrix3d L;
-        L <<    -1.0 / Z,   0.0,        u / Z,
-                0.0,        -1.0 / Z,   v / Z,
-                0.0,        0.0,        -1.0;
+        // // Interaction matrix simplified for this case (depth camera + only translation)
+        // Eigen::Matrix3d L;
+        // L <<    -1.0 / Z,   0.0,        u / Z,
+        //         0.0,        -1.0 / Z,   v / Z,
+        //         0.0,        0.0,        -1.0;
 
-        // Velocità camera
-        Eigen::Vector3d v_c = -(lambda_IBVS * L.inverse() * e_s);
+        // // Velocità camera
+        // Eigen::Vector3d v_c = - (lambda_IBVS * L.inverse() * e_s);
+
+        // Prova: calcolo direttamente la pseudo-inversa
+        Eigen::Matrix3d L_pinv;
+        L_pinv <<  -Z,      0.0,     u,
+                    0.0,    -Z,      v,
+                    0.0,    0.0,    -1.0;
+
+        Eigen::Vector3d v_c = - (lambda_IBVS * L_pinv * e_s);
+
+        // double mu = 0.02;
+        // Eigen::Matrix3d L_damped =
+        //     L.transpose() * (L * L.transpose()
+        //     + mu * mu * Eigen::Matrix3d::Identity()).inverse();
+
+        // Eigen::Vector3d v_c = - (lambda_IBVS * L_damped * e_s);
        
         // Rotazione camera -> EE (costante, da TF)
         Eigen::Isometry3d camera_to_EE;
         try {
-            geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("laser", "camera_kinematic", tf2::TimePointZero);
+            geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("end_effector", "camera_kinematic", tf2::TimePointZero);
             camera_to_EE = tf2::transformToEigen(camera_pose);
         }
         catch (tf2::TransformException &ex) {
@@ -625,6 +664,15 @@ namespace arm_mazzolini
         // Potrei aggiungere un terzo joint state per considerare la focale del laser
         auto q = Eigen::Vector3d(joint_states[0], joint_states[1], 0.0);
         Eigen::Vector3d q_next = q + q_dot * dt;
+
+        RCLCPP_INFO(this->get_logger(), "======================DEBUG IBVS======================");
+        RCLCPP_INFO_STREAM(this->get_logger(), "Feature error (in pixels): " << e_s.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "Camera velocity (m/s): " << v_c.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "EE velocity (m/s): " << v_e.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "Joint velocity (rad/s): " << q_dot.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "Current joint angles (rad): " << q.transpose());
+        RCLCPP_INFO_STREAM(this->get_logger(), "Next joint angles (rad): " << q_next.transpose());
+        RCLCPP_INFO(this->get_logger(), "=====================================================");
 
         return {q_next(0), q_next(1)};
     }

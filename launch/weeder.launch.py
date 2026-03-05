@@ -94,7 +94,7 @@ def generate_launch_description():
             " ",
             "controller_yaml:=", controller_config_file,
             " ",
-            "use_sime_time:=", use_sim_time
+            "use_sim_time:=", use_sim_time
         ]
     )
     

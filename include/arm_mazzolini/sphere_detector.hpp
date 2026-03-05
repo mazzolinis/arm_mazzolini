@@ -14,7 +14,7 @@ namespace arm_mazzolini
 class SphereDetector
 {
     public:
-        SphereDetector(int roi_size = 5, int morph_kernel_size = 5, int depth_roi_size = 5, MaskType mask_type = MaskType::HSV_red);
+        SphereDetector(int roi_size = 10, int morph_kernel_size = 10, int depth_roi_size = 20, MaskType mask_type = MaskType::HSV_red);
 
     // Functions
     void SetCameraInfo(const sensor_msgs::msg::CameraInfo::ConstSharedPtr &info_msg);

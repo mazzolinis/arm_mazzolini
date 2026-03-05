@@ -72,7 +72,7 @@ namespace arm_mazzolini
         const std::vector<double> initial_joint_values = {-M_PI/3, M_PI/3}; 
         std::vector<double> joint_states = initial_joint_values;
         std::vector<double> last_joint_angles;
-        const double joint_tolerance = 1e-2; // radians
+        const double joint_tolerance = 1e-3; // radians
 
         // Timers
         rclcpp::TimerBase::SharedPtr pose_timer;
@@ -122,8 +122,8 @@ namespace arm_mazzolini
         void send_joint_trajectory(const std::vector<double>& joint_angles);
         bool vectors_are_equal(const std::vector<double>& vec1, const std::vector<double>& vec2);
         void activate_laser();
-        std::vector<double> IBVS_control(const Eigen::Vector3d& feature);
-        std::vector<double> PBVS_control(const Eigen::Vector3d& center);
+        std::vector<double> IBVS_control(Eigen::Vector3d& feature);
+        std::vector<double> PBVS_control(Eigen::Vector3d& center);
         
         // Callbacks
         void joint_states_callback(const sensor_msgs::msg::JointState::SharedPtr msg);
