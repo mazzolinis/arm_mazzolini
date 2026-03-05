@@ -468,7 +468,8 @@ namespace arm_mazzolini
             case rclcpp_action::ResultCode::SUCCEEDED:
             {
                 if(controller_status == ControllerStatus::ARM_MOVING) {
-                    controller_status = ControllerStatus::POSITIONING;
+                    // controller_status = ControllerStatus::POSITIONING;
+                    activate_laser(); // skipping control
                 }
 
                 break;

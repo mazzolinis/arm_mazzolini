@@ -75,6 +75,23 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+        camera_kinematic:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        end_effector:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         front_left_wheel:
           Alpha: 1
           Show Axes: false
@@ -86,6 +103,15 @@ Visualization Manager:
           Show Trail: false
           Value: true
         inertial:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
+        kinematic_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        laser:
           Alpha: 1
           Show Axes: false
           Show Trail: false
@@ -121,7 +147,7 @@ Visualization Manager:
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: base_link
+    Fixed Frame: odom
     Frame Rate: 30
   Name: root
   Tools:

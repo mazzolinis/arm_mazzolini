@@ -10,7 +10,7 @@
     <xacro:property name="ee_light_mesh" value="file://$(find arm_mazzolini)/meshes/stl/ee_laser_light.stl"/>
     <xacro:property name="ee_heavy_mesh" value="file://$(find arm_mazzolini)/meshes/stl/ee_laser_heavy.stl"/>
     <!-- <xacro:property name="camera_mesh" value="file://$(find arm_mazzolini)/meshes/stl/D435.stl"/> -->
-    <xacro:property name="h0" value="0.065"/>
+    <xacro:property name="h0" value="0.07"/>
     <xacro:property name="l0" value="0.190"/>
     <xacro:property name="h1" value="0.0"/>
     <xacro:property name="l1" value="0.190"/>
@@ -38,9 +38,9 @@
             <inertial>
                 <origin xyz="0 0 0" rpy="0 0 0"/>
                 <mass value="2.074"/>
-            <inertia ixx="0.006004333"  ixy="0.000070425"   ixz="0.001686871"
-                                        iyy="0.010804985"   iyz="-0.000043204"
-                                                            izz="0.013471098"
+            <inertia ixx="0.006004333"  ixy="0.0"           ixz="-0.000283467"
+                                        iyy="0.0.0628431"   iyz="0.0"
+                                                            izz="0.010101581"
                 />
             </inertial>
         </link>
@@ -63,9 +63,9 @@
             <inertial>
                 <origin xyz="${l1/2} 0 ${h1/2}" rpy="0 0 0"/>
                 <mass value="0.220"/>
-            <inertia ixx="0.000162936"  ixy="-0.000002254"  ixz="0.000291499"
-                                        iyy="0.002971043"   iyz="0.0"
-                                                            izz="0.002927669"
+            <inertia ixx="0.000143696"  ixy="0.0"           ixz="0.000134444"
+                                        iyy="0.001669532"   iyz="0.0"
+                                                            izz="0.001645390"
                 />
             </inertial>
         </link>
@@ -220,7 +220,7 @@
             <origin xyz="${l0} 0 ${h0}" rpy="0 0 0"/>
             <!-- <origin xyz="0 0 ${h0}" rpy="0 0 0"/> -->
             <axis xyz="0 0 1"/>
-            <limit effort="100" lower="-${PI}" upper="${PI}" velocity="1000"/>
+            <limit effort="1000" lower="-${PI}" upper="${PI}" velocity="100"/>
         </joint>
 
         <!-- Joint 2 (Revolute) -->
@@ -234,7 +234,7 @@
             </xacro:if>
             <origin xyz="${l1} 0 ${h1}" rpy="0 0 0"/>
             <axis xyz="0 0 1"/>
-            <limit effort="100" lower="-${PI}" upper="${PI}" velocity="1000"/>
+            <limit effort="1000" lower="-${PI}" upper="${PI}" velocity="100"/>
         </joint>
     </xacro:macro>
 

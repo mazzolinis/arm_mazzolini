@@ -1,6 +1,6 @@
 controller_manager:
   ros__parameters:
-    update_rate: 100  # Hz
+    update_rate: 250  # Hz
 
     joint_state_broadcaster:
         type: joint_state_broadcaster/JointStateBroadcaster
@@ -23,14 +23,14 @@ joint_trajectory_controller:
       - velocity
     gains:
       joint1:
-        p: 20.0
+        p: 100.0
         i: 0.0
-        d: 1.9
+        d: 2.1
         ff_velocity_scale: 0.0
       joint2:
-        p: 10.0
+        p: 80.0
         i: 0.0
-        d: 1.5
+        d: 1.8
         ff_velocity_scale: 0.0
     # constraints: 
     #   goal_time: 5.0
@@ -40,9 +40,9 @@ diff_drive_controller:
     left_wheel_names: ["front_left_wheel_joint", "rear_left_wheel_joint"]
     right_wheel_names: ["front_right_wheel_joint", "rear_right_wheel_joint"]
     
-    wheel_separation: 1.0
-    wheel_separation_multiplier: 1.0
-    wheel_radius: 0.2
+    wheel_separation: 0.695
+    wheel_separation_multiplier: 3.2
+    wheel_radius: 0.18
     wheels_per_side: 2
 
     cmd_vel_timeout: 0.5

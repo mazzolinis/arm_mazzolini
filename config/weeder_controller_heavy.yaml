@@ -23,15 +23,15 @@ joint_trajectory_controller:
       - velocity
     gains:
       joint1:
-        p: 10.0
+        p: 80.0
         i: 0.0
-        d: 2.3
-        ff_velocity_scale: 1.0
+        d: 4.0
+        ff_velocity_scale: 0.0
       joint2:
-        p: 10.0
+        p: 80.0
         i: 0.0
-        d: 2.3
-        ff_velocity_scale: 1.0
+        d: 4.0
+        ff_velocity_scale: 0.0
     # constraints: 
     #   goal_time: 5.0
 
@@ -40,9 +40,9 @@ diff_drive_controller:
     left_wheel_names: ["front_left_wheel_joint", "rear_left_wheel_joint"]
     right_wheel_names: ["front_right_wheel_joint", "rear_right_wheel_joint"]
     
-    wheel_separation: 1.0
-    wheel_separation_multiplier: 1.0
-    wheel_radius: 0.2
+    wheel_separation: 0.695
+    wheel_separation_multiplier: 3.2
+    wheel_radius: 0.18
     wheels_per_side: 2
 
     cmd_vel_timeout: 0.5
@@ -80,7 +80,7 @@ weeder_controller:
     roi_size: 5
     morph_kernel_size: 5
     depth_roi_size: 5
-    mask_type: HSV_red # options: HSV_red, ExG_threshold, ExG_Otsu, ExGR. Default: HSV_red
+    mask_type: ExG_threshold # options: HSV_red, ExG_threshold, ExG_Otsu, ExGR. Default: HSV_red
 
     visual_servoing:
       filtering: false
@@ -98,19 +98,19 @@ gazebo_target_visualizer:
   # Colors are always RGBA
   # Uncomment only one of the following
 
-    # Red Target
-    material:
-      ambient: [1.0, 0.0, 0.0, 1.0]       # colore del materiale senza luce
-      diffuse: [1.0, 0.0, 0.0, 1.0]       # colore del materiale alla luce
-      specular: [1.0, 0.5, 0.5, 1.0]  # riflettività (alto = plastica lucida)
-      emissive: [0.5, 0.0, 0.0, 1.0]    # luminosità emessa
+    # # Red Target
+    # material:
+    #   ambient: [1.0, 0.0, 0.0, 1.0]       # colore del materiale senza luce
+    #   diffuse: [1.0, 0.0, 0.0, 1.0]       # colore del materiale alla luce
+    #   specular: [1.0, 0.5, 0.5, 1.0]  # riflettività (alto = plastica lucida)
+    #   emissive: [0.5, 0.0, 0.0, 1.0]    # luminosità emessa
 
-    # # Light Green Target 
-    # material: 
-    #   ambient: [0.2, 0.6, 0.2, 1.0]      
-    #   diffuse: [0.3, 0.8, 0.3, 1.0]
-    #   specular: [0.05, 0.05, 0.05, 1.0] 
-    #   emissive: [0.0, 0.0, 0.0, 1.0] 
+    # Light Green Target 
+    material: 
+      ambient: [0.2, 0.6, 0.2, 1.0]      
+      diffuse: [0.3, 0.8, 0.3, 1.0]
+      specular: [0.05, 0.05, 0.05, 1.0] 
+      emissive: [0.0, 0.0, 0.0, 1.0] 
 
     # # Dark Green Target
     # material: 
