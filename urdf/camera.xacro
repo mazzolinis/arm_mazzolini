@@ -33,7 +33,7 @@
         <joint name="camera_kinematic_joint" type="fixed">
             <parent link="camera_link"/>
             <child link="camera_kinematic"/>
-            <origin xyz="0 0 0.0" rpy="0 0 0"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
         </joint>
 
         <link name="camera_optical_frame"/>
@@ -43,7 +43,7 @@
             <joint name="camera_optical_joint" type="fixed">
                 <parent link="camera_link"/>
                 <child link="camera_optical_frame"/>
-                <origin xyz="0 0 0.003" rpy="${PI/2} ${-PI/2} 0"/>
+                <origin xyz="0 0 0" rpy="${PI/2} ${-PI/2} 0"/>
             </joint>
         </xacro:if>
 
@@ -80,7 +80,8 @@
                 <image>
                     <width>${width}</width>
                     <height>${height}</height>
-                    <format>L8</format>
+                    <!-- <format>L8</format> -->
+                    <format>RGB_INT8</format>
                 </image>
                 <clip>
                     <near>0.01</near>

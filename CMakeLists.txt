@@ -34,6 +34,7 @@ find_package(tf2_eigen REQUIRED)
 find_package(camera_info_manager REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(cv_bridge REQUIRED)
+find_package(pi3hat_moteus_int_msgs REQUIRED)
 
 
 set(PROJECT_DEPENDENCIES
@@ -54,6 +55,7 @@ set(PROJECT_DEPENDENCIES
   camera_info_manager
   OpenCV
   cv_bridge
+  pi3hat_moteus_int_msgs
 )
 
 # ==============================================================================
@@ -85,6 +87,7 @@ add_executable(rviz_target_visualizer src/rviz_target_visualizer.cpp)
 add_executable(target_spawner src/target_spawner.cpp)
 add_executable(camera_info_publisher src/camera_info_publisher.cpp)
 add_executable(weeder_controller src/weeder_controller.cpp)
+add_executable(real_arm_test_node src/real_arm_test_node.cpp)
 
 
 ament_target_dependencies(
@@ -109,6 +112,11 @@ ament_target_dependencies(
 )
 target_link_libraries(weeder_controller PUBLIC arm_mazzolini_library)
 
+ament_target_dependencies(
+  real_arm_test_node PUBLIC
+  ${PROJECT_DEPENDENCIES}
+)
+
 target_include_directories(kinematic_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
@@ -130,6 +138,10 @@ target_include_directories(camera_info_publisher PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 target_include_directories(weeder_controller PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+target_include_directories(real_arm_test_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
@@ -159,6 +171,9 @@ install(TARGETS camera_info_publisher
   DESTINATION lib/${PROJECT_NAME}
 )
 install(TARGETS weeder_controller
+  DESTINATION lib/${PROJECT_NAME}
+)
+install(TARGETS real_arm_test_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

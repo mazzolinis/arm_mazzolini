@@ -39,7 +39,7 @@
                 <origin xyz="0 0 0" rpy="0 0 0"/>
                 <mass value="2.074"/>
             <inertia ixx="0.006004333"  ixy="0.0"           ixz="-0.000283467"
-                                        iyy="0.0.0628431"   iyz="0.0"
+                                        iyy="0.00628431"    iyz="0.0"
                                                             izz="0.010101581"
                 />
             </inertial>
@@ -184,10 +184,10 @@
         <link name="laser">
             <visual>
                 <geometry>
-                    <cylinder radius="0.005" length="1.0"/>
+                    <cylinder radius="0.002" length="1.0"/>
                 </geometry>
-                <material name="grey">
-                    <color rgba="0.6 0.6 0.6 0.9"/>
+                <material name="red">
+                    <color rgba="0.9 0 0 1"/>
                 </material>
             </visual>
         </link>

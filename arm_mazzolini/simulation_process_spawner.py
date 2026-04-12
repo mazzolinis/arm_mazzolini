@@ -25,6 +25,7 @@ class SpawnTarget:
     inline_params: Optional[dict[str, Any]] = None
     spawned: bool = False     # check if already spawned
     timer: Optional[Timer] = None
+    interactive: bool = False # if true, opens a new terminal for inputs
 
 # =====================================================
 # This node spawns controllers and other nodes
@@ -89,6 +90,8 @@ class SimulationProcessSpawner(Node):
             target.timer = None
 
     # -------------------------------------------------
+    #                   MAIN FUNCTION
+    # -------------------------------------------------
 
     def spawn(self, target: SpawnTarget):
         cmd = ['ros2', 'run', target.package, target.executable]
@@ -101,7 +104,6 @@ class SimulationProcessSpawner(Node):
                 f'{target.name}:={target.log_level}'
             ])
 
-
         if target.inline_params:
             for key, value in target.inline_params.items():
                 cmd.extend(['-p', f'{key}:={value}'])
@@ -111,12 +113,30 @@ class SimulationProcessSpawner(Node):
 
         self.get_logger().info(f'Spawning {target.name}')
 
-        proc = subprocess.Popen(
-            cmd,
-            stdout=None,  # change these to subprocess.PIPE to intercept output
-            stderr=None,
-            preexec_fn=os.setsid
-        )
+        if target.interactive:
+            # # New terminal in xterm
+            # proc = subprocess.Popen(
+            #     ['xterm', '-title', target.name, '-e', ' '.join(cmd)],
+            #     preexec_fn=os.setsid
+            # )
+            # New terminal in gnome-terminal
+            bash_cmd = ' '.join(cmd) + '; echo "--- Processo terminato, premi Invio per chiudere ---"; read'
+            proc = subprocess.Popen(
+                ['gnome-terminal', '--title', target.name, '--', 'bash', '-c', bash_cmd],
+                preexec_fn=os.setsid
+            )
+            # # New terminal in terminator, NOT WORKING AT THE MOMENT
+            # proc = subprocess.Popen(
+            #     ['terminator', '-T', target.name, '-e', ' '.join(cmd)],
+            #     preexec_fn=os.setsid
+            # )
+        else:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=None,  # change these to subprocess.PIPE to intercept output
+                stderr=None,
+                preexec_fn=os.setsid
+            )
 
         self.processes.append(proc)
 
@@ -153,6 +173,7 @@ class SimulationProcessSpawner(Node):
         self.world_height = self.get_parameter('world_height').get_parameter_value().double_value
         self.declare_parameter('output_file', ' ')
         self.output_file = self.get_parameter('output_file').get_parameter_value().string_value
+        # self.use_real_hw = self.get_parameter('use_real_hw').get_parameter_value().bool_value
 
     # =====================================================
 #                       NODES ARE WRITTEN HERE 
@@ -220,7 +241,7 @@ class SimulationProcessSpawner(Node):
                 executable='target_spawner',
                 extra_args=[],
                 inline_params={'world_height': self.world_height, 'output_file': self.output_file},
-                delay=2.0
+                delay=2.5
             )
         )
 
@@ -230,8 +251,11 @@ class SimulationProcessSpawner(Node):
                 package='arm_mazzolini',
                 executable='weeder_controller',
                 extra_args=[],
+                log_level='INFO',
                 params_file=self.controller_yaml,
-                delay=1.0
+                # inline_params={'use_real_hw': self.use_real_hw},
+                delay=1.0,
+                interactive=True
             )
         )
 

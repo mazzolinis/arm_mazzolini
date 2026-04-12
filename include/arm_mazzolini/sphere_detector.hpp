@@ -38,6 +38,7 @@ class SphereDetector
     double fx_, fy_, cx_, cy_;
     MaskType mask_type_;
     double exg_threshold = 0.2; // TODO: tune this parameter
+    double area_threshold = 100.0; // TODO: tune this parameter
     bool DetectSphere(
         const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
         const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
@@ -46,6 +47,7 @@ class SphereDetector
     cv::Mat createMask(const cv::Mat &hsv);
     cv::Mat cleanMask(const cv::Mat &mask);
     bool findLargestBlob(const cv::Mat &mask, cv::Point &centroid);
+    bool findPlantCentroid(const cv::Mat &mask, cv::Point &centroid);
     double getDepthMedian(const cv::Mat &depth, const cv::Point &center);
     void RGBDecomposition(const cv::Mat &rgb, cv::Mat &r, cv::Mat &g, cv::Mat &b);
 };

@@ -199,18 +199,20 @@ namespace arm_mazzolini
             case ControllerStatus::HAS_TARGET:
                 {
                     Eigen::Vector3d actual_position;
+
+                    // No target = clear buffer and go back to NO_TARGET
                     if(!sphere_detector->PBTargetPosition(rgb_msg, depth_msg, actual_position)) {
                         RCLCPP_INFO(this->get_logger(), "Target lost!");
                         target_buffer.clear();
                         controller_status = ControllerStatus::NO_TARGET;
                         return;
                     }
+                    // Target detected = add it to buffer
                     else {
                         target_buffer.push_back(actual_position);
-                        // RCLCPP_INFO(this->get_logger(), "Target detected at [%.3f, %.3f, %.3f] in camera frame", actual_position.x(), actual_position.y(), actual_position.z());
                         
+                        // Buffer full = compute average and move to that position
                         if(target_buffer.size() >= image_buffer_size) {
-                            // Compute temporal average and send trajectory
                             target_camera_position.setZero();
                             for(const auto& pos : target_buffer) {
                                 target_camera_position += pos;
@@ -220,6 +222,10 @@ namespace arm_mazzolini
                             target_buffer.clear();
 
                             try {
+                                // OVERRIDE: Remove it later
+                                target_camera_position = Eigen::Vector3d(0.0, 0.0, 0.5);
+                                // OVERRIDE
+
                                 geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("kinematic_link", "camera_kinematic", tf2::TimePointZero);
                                 Eigen::Isometry3d camera_to_kinematic = tf2::transformToEigen(camera_pose);
                                 target_position = camera_to_kinematic * target_camera_position;
@@ -227,11 +233,21 @@ namespace arm_mazzolini
                                 // store target position and use it later, DO NOT MOVE NOW!
 
                                 // Debug print:
-                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Target obtained: ");
+                                geometry_msgs::msg::TransformStamped base_to_kinematic = tf_buffer->lookupTransform("kinematic_link", "arm_base_link", tf2::TimePointZero);
+                                Eigen::Isometry3d base_to_kinematic_eigen = tf2::transformToEigen(base_to_kinematic);
+                                geometry_msgs::msg::TransformStamped base_to_camera = tf_buffer->lookupTransform("arm_base_link", "camera_kinematic", tf2::TimePointZero);
+                                Eigen::Isometry3d base_to_camera_eigen = tf2::transformToEigen(base_to_camera);
+                                Eigen::Vector3d target_in_arm_base = base_to_kinematic_eigen * target_position;
+
+                                RCLCPP_DEBUG_STREAM(this->get_logger(), "====================== DEBUG INVERSE KINEMATIC: ======================");
+                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Joint states: " << joint_states[0] << ", " << joint_states[1]);
                                 RCLCPP_DEBUG_STREAM(this->get_logger(), "Target in camera frame: " << std::endl << target_camera_position);
-                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Rotation: " << std::endl << camera_to_kinematic.rotation());
-                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Translation: " << std::endl << camera_to_kinematic.translation());    
-                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Target in arm base frame: " << std::endl << target_position);                            
+                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Base to kinematic rotation: " << std::endl << base_to_kinematic_eigen.rotation());
+                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Base to kinematic translation: " << std::endl << base_to_kinematic_eigen.translation());
+                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Base to camera rotation: " << std::endl << base_to_camera_eigen.rotation());
+                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Base to camera translation: " << std::endl << base_to_camera_eigen.translation());
+                                RCLCPP_DEBUG_STREAM(this->get_logger(), "Target in arm base frame: " << std::endl << target_in_arm_base);
+                                RCLCPP_DEBUG_STREAM(this->get_logger(), "====================================================================");
                             }
                             catch (tf2::TransformException &ex) {
                                 RCLCPP_WARN_THROTTLE(
@@ -262,7 +278,6 @@ namespace arm_mazzolini
                     return;
                 }
                 else {
-
                     target_camera_position = sphere_detector->PBTargetPosition(target_feature);
                 }
                 break;
@@ -281,7 +296,7 @@ namespace arm_mazzolini
         const sensor_msgs::msg::JointState::SharedPtr msg)
     {
 
-        if (controller_status != ControllerStatus::POSITIONING && controller_status != ControllerStatus::ARM_MOVING) {
+        if (controller_status == ControllerStatus::NO_TARGET) {
             return;
         }
         int idx1 = -1;
@@ -369,7 +384,7 @@ namespace arm_mazzolini
             case ControllerStatus::ARM_MOVING:
             {
                 if (!new_pose.isApprox(old_pose, pose_threshold)) {
-                    RCLCPP_INFO(this->get_logger(), "STOP!! Arm moving. Movement aborted.");
+                    RCLCPP_WARN(this->get_logger(), "STOP!! Arm moving. Movement aborted.");
                     target_buffer.clear();
                     controller_status = ControllerStatus::HAS_TARGET;
                     joints_client->async_cancel_all_goals();
@@ -379,7 +394,7 @@ namespace arm_mazzolini
                     ErrorType error_type;
                     std::vector<double> joint_angles;
                     if (arm_kinematic->computeIK(target_position, joint_angles, error_type)){
-                        // RCLCPP_INFO_STREAM(this->get_logger(), "Arm moving to: " << joint_angles[0] << ", " << joint_angles[1]); 
+                        RCLCPP_DEBUG_STREAM(this->get_logger(), "Arm moving to: " << joint_angles[0] << ", " << joint_angles[1]); 
                         send_joint_trajectory(joint_angles);
                     }
                     else {
@@ -395,7 +410,6 @@ namespace arm_mazzolini
                                 RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Get closer, target out of reach.");
                                 double r = std::sqrt(target_position.x()*target_position.x() + target_position.y()*target_position.y());
                                 RCLCPP_INFO_STREAM_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "r = " << r << " l1 + l2 = " << (l1 + l2));
-                                // TODO: print position to check if calculations are correct
                                 break;
                             }
                             case ErrorType::EXCLUSION_ZONE:
@@ -468,18 +482,17 @@ namespace arm_mazzolini
             case rclcpp_action::ResultCode::SUCCEEDED:
             {
                 if(controller_status == ControllerStatus::ARM_MOVING) {
-                    // controller_status = ControllerStatus::POSITIONING;
-                    activate_laser(); // skipping control
+                    controller_status = ControllerStatus::POSITIONING;
                 }
 
                 break;
             }
                 // TODO: handle other cases
             case rclcpp_action::ResultCode::ABORTED:
-                RCLCPP_ERROR(this->get_logger(), "Joint trajectory execution aborted.");
+                // RCLCPP_ERROR(this->get_logger(), "Joint trajectory execution aborted.");
                 break;
             case rclcpp_action::ResultCode::CANCELED:
-                RCLCPP_ERROR(this->get_logger(), "Joint trajectory execution canceled.");
+                // RCLCPP_ERROR(this->get_logger(), "Joint trajectory execution canceled.");
                 break;
             default:
                 RCLCPP_ERROR(this->get_logger(), "Unknown result code.");
@@ -515,10 +528,7 @@ namespace arm_mazzolini
         else {
             double pixel_error = std::sqrt(std::pow(target_feature.x() - desired_feature.x(), 2) + std::pow(target_feature.y() - desired_feature.y(), 2));
 
-            RCLCPP_INFO_STREAM(this->get_logger(), "target feature: " << target_feature.transpose());
-            RCLCPP_INFO_STREAM(this->get_logger(), "desired feature: " << desired_feature.transpose());
-            RCLCPP_INFO_STREAM(this->get_logger(), "pixel error: " << pixel_error);
-            if (pixel_error < control_threshold) {
+            if (pixel_error < control_threshold && keyboard_thread_active_ == false) {
                 activate_laser();
                 target_feature.setZero(); 
             }
@@ -575,15 +585,15 @@ namespace arm_mazzolini
         auto q = Eigen::Vector3d(joint_states[0], joint_states[1], 0.0);
         Eigen::Vector3d q_next = q + q_dot * dt;
 
-        RCLCPP_INFO(this->get_logger(), "======================DEBUG PBVS======================");
-        RCLCPP_INFO_STREAM(this->get_logger(), "Target position (m): " << target.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "Desired position (m): " << desired_position.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "Camera velocity (m/s): " << v_c.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "EE velocity (m/s): " << v_e.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "Joint velocity (rad/s): " << q_dot.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "Current joint angles (rad): " << q.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "Next joint angles (rad): " << q_next.transpose());
-        RCLCPP_INFO(this->get_logger(), "=====================================================");
+        RCLCPP_DEBUG(this->get_logger(), "======================DEBUG PBVS======================");
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Target position (m): " << target.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Desired position (m): " << desired_position.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Camera velocity (m/s): " << v_c.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "EE velocity (m/s): " << v_e.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Joint velocity (rad/s): " << q_dot.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Current joint angles (rad): " << q.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Next joint angles (rad): " << q_next.transpose());
+        RCLCPP_DEBUG(this->get_logger(), "=====================================================");
 
 
         return {q_next(0), q_next(1)};
@@ -666,39 +676,66 @@ namespace arm_mazzolini
         auto q = Eigen::Vector3d(joint_states[0], joint_states[1], 0.0);
         Eigen::Vector3d q_next = q + q_dot * dt;
 
-        RCLCPP_INFO(this->get_logger(), "======================DEBUG IBVS======================");
-        RCLCPP_INFO_STREAM(this->get_logger(), "Feature error (in pixels): " << e_s.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "Camera velocity (m/s): " << v_c.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "EE velocity (m/s): " << v_e.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "Joint velocity (rad/s): " << q_dot.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "Current joint angles (rad): " << q.transpose());
-        RCLCPP_INFO_STREAM(this->get_logger(), "Next joint angles (rad): " << q_next.transpose());
-        RCLCPP_INFO(this->get_logger(), "=====================================================");
+        RCLCPP_DEBUG(this->get_logger(), "======================DEBUG IBVS======================");
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Feature error (in camera frame): " << e_s.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Camera velocity (m/s): " << v_c.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "EE velocity (m/s): " << v_e.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Joint velocity (rad/s): " << q_dot.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Current joint angles (rad): " << q.transpose());
+        RCLCPP_DEBUG_STREAM(this->get_logger(), "Next joint angles (rad): " << q_next.transpose());
+        RCLCPP_DEBUG(this->get_logger(), "=====================================================");
 
         return {q_next(0), q_next(1)};
     }
 
     void WeederController::activate_laser()
     {
-        controller_status = ControllerStatus::LASERING;
-        geometry_msgs::msg::PointStamped lasered_position;
-        try {
-            // TODO: remove odom and use global fixed frame
-            geometry_msgs::msg::TransformStamped arm_pose = tf_buffer->lookupTransform("odom", "kinematic_link", tf2::TimePointZero);
-            Eigen::Isometry3d kinematic_to_base = tf2::transformToEigen(arm_pose);
-            Eigen::Vector3d absolute_position = kinematic_to_base * target_position;
-            lasered_position.point = tf2::toMsg(absolute_position);
-            lasered_position.header.stamp = this->now();
-            lasered_position.header.frame_id = "odom";
-            laser_pub->publish(lasered_position);
-
+        // Avoind having multiple threads if entering multiple times in this function
+        if (keyboard_thread.joinable()) {
+            keyboard_thread.join();
         }
-        catch (tf2::TransformException &ex) {
-            RCLCPP_WARN(this->get_logger(), "Could not transform odom to kinematic_link: %s", ex.what());
-        }                     
 
-        controller_status = ControllerStatus::NO_TARGET;
-        return;
+        controller_status = ControllerStatus::LASERING;
+
+        // Create a thread to wait for keyboard input (in real robot it will wait for laser to complete)
+        keyboard_thread = std::thread([this]() {
+            std::string dummy;
+            RCLCPP_INFO(this->get_logger(), "============ Press Enter =============");
+            std::getline(std::cin, dummy); // wait for user to press enter
+
+            // If controller exits from LASERING state (mobile base moved), it stops 
+            if (controller_status != ControllerStatus::LASERING) {
+                keyboard_thread_active_ = false;
+                return;
+            }
+
+            geometry_msgs::msg::PointStamped lasered_position;
+            try {
+                // TODO: remove odom and use global fixed frame
+                geometry_msgs::msg::TransformStamped arm_pose = tf_buffer->lookupTransform("odom", "kinematic_link", tf2::TimePointZero);
+                Eigen::Isometry3d kinematic_to_base = tf2::transformToEigen(arm_pose);
+                Eigen::Vector3d absolute_position = kinematic_to_base * target_position;
+                lasered_position.point = tf2::toMsg(absolute_position);
+                lasered_position.header.stamp = this->now();
+                lasered_position.header.frame_id = "odom";
+                laser_pub->publish(lasered_position);
+
+            }
+            catch (tf2::TransformException &ex) {
+                RCLCPP_WARN(this->get_logger(), "Could not transform odom to kinematic_link: %s", ex.what());
+            }                     
+
+            controller_status = ControllerStatus::NO_TARGET;
+            keyboard_thread_active_ = false;
+        });
+        keyboard_thread.detach();
+    }
+
+    WeederController::~WeederController()
+    {
+        if (keyboard_thread.joinable()) {
+            keyboard_thread.join();
+        }
     }
 
 } // namespace arm mazzolini

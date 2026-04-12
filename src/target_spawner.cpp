@@ -37,6 +37,29 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
     // TF
     tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
+
+    // --- Buffer 2: Ground truth from Gazebo ---
+    // need to set false to avoid automatic subscription to /tf, which would interfere with the custom subscription to /gz/poses
+    // tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+    // tf_listener = std::make_shared<tf2_ros::TransformListener>(
+    //   *tf_buffer,
+    //   this,
+    //   false  // not listening to /tf, we will subscribe to /world instead
+    // );
+
+
+    // // Subscriber applied to tf_buffer
+    // gz_sub_ = this->create_subscription<tf2_msgs::msg::TFMessage>(
+    //   "/world/default/dynamic_pose/info",
+    //   rclcpp::SensorDataQoS(),
+    //   [this](const tf2_msgs::msg::TFMessage::SharedPtr msg) {
+    //     for (const auto & t : msg->transforms)
+    //       tf_buffer->setTransform(t, "world", false);
+    //   }
+    // );
+
+
+    // Timer
     timer = rclcpp::create_timer(
         this,
         this->get_clock(),
@@ -120,7 +143,7 @@ void TargetSpawner::timer_callback()
     // Publish target
     geometry_msgs::msg::PointStamped target_msg;
     target_msg.header.stamp = this->now();
-    target_msg.header.frame_id = "map";
+    target_msg.header.frame_id = "world";
     target_msg.point.x = target_position.x();
     target_msg.point.y = target_position.y();
     target_msg.point.z = target_position.z();
@@ -149,6 +172,10 @@ void TargetSpawner::laser_callback(const geometry_msgs::msg::PointStamped::Share
     // std::lock_guard<std::mutex> guard(buffer_mutex);
     // buffer.push_back(data_entry);
 
+
+    // ===============================
+    // QUESTA PARTE ERA FUNZIONANTE
+    // ===============================
     Eigen::Vector3d lasered_position;
     tf2::fromMsg(msg->point, lasered_position);
 
@@ -162,6 +189,37 @@ void TargetSpawner::laser_callback(const geometry_msgs::msg::PointStamped::Share
     );
     std::lock_guard<std::mutex> guard(buffer_mutex);
     buffer.push_back(data_entry);
+
+    // ===============================
+    // QUESTA PARTE È NUOVA
+    // ===============================
+    // Eigen::Vector3d lasered_position;
+    // Eigen::Vector3d plant_position;
+    // // ignore message
+    // try {
+    //     // laser
+    //     auto laser_tf = tf_buffer->lookupTransform("world", "laser", tf2::TimePointZero);
+    //     Eigen::Isometry3d laser_pose = tf2::transformToEigen(laser_tf);
+    //     lasered_position = laser_pose.translation();
+
+    //     // plant
+    //     auto plant_tf = tf_buffer->lookupTransform("world", "plant", tf2::TimePointZero);
+    //     Eigen::Isometry3d plant_pose = tf2::transformToEigen(plant_tf);
+    //     plant_position = plant_pose.translation();
+    // }
+    // catch (const tf2::TransformException &ex) {
+    //     RCLCPP_ERROR(this->get_logger(), "Transform error: %s", ex.what());
+    //     return;
+    // }
+
+    // double error = 0.0; // needed to keep the same format, error will be computed offline
+    // std::tuple<double, double, double, double, double> data_entry(
+    //     plant_position.x(), plant_position.y(), 
+    //     lasered_position.x(), lasered_position.y(),
+    //     error
+    // );
+    // std::lock_guard<std::mutex> guard(buffer_mutex);
+    // buffer.push_back(data_entry);
 
     // TODO: change it to false if error is too large
     std_msgs::msg::Bool bool_msg;

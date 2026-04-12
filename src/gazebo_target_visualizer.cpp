@@ -127,10 +127,11 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   xml += R"(">)";
   xml += "<static>true</static>";
   xml += "<pose>";
-  xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + " ";
+  // xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + " ";
+  xml += "0 0 0 ";
   xml += "0 0 1.58</pose>";
   xml += R"(
-      <link name="link">
+      <link name="plant">
         <!-- Disable gravity for this object -->
         <gravity>false</gravity>
 
@@ -193,7 +194,7 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   request->entity_factory.pose.orientation.y = 0.0;
   request->entity_factory.pose.orientation.z = 0.0;
   request->entity_factory.pose.orientation.w = 1.0;
-  request->entity_factory.relative_to = "odom";
+  request->entity_factory.relative_to = "world";
 
   // spawn_client_->async_send_request(request);
   auto future = spawn_client_->async_send_request(request,

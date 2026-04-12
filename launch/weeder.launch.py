@@ -1,6 +1,6 @@
 # from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument,IncludeLaunchDescription, RegisterEventHandler, TimerAction
+from launch.actions import DeclareLaunchArgument,IncludeLaunchDescription, RegisterEventHandler, TimerAction, SetEnvironmentVariable
 from launch.conditions import IfCondition,UnlessCondition
 from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -19,6 +19,13 @@ def generate_launch_description():
             "use_sim_time",
             default_value="true",
             description="Use simulation (Gazebo) clock if true",
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_real_hw",
+            default_value="false",
+            description="Use real arm if true",
         )
     )
     declared_arguments.append(
@@ -59,6 +66,7 @@ def generate_launch_description():
 
     # Initialize Arguments
     use_sim_time = LaunchConfiguration("use_sim_time")
+    use_real_hw = LaunchConfiguration("use_real_hw")
     height = LaunchConfiguration("height")
     world_height = LaunchConfiguration("world_height")
     is_light = LaunchConfiguration("is_light")
@@ -97,22 +105,28 @@ def generate_launch_description():
             "use_sim_time:=", use_sim_time
         ]
     )
-    
+
     # Launch Gazebo
     gz_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
-                [FindPackageShare("ros_gz_sim"), "launch", "gz_sim.launch.py"]
+                # [FindPackageShare("ros_gz_sim"), "launch", "gz_sim.launch.py"]
+                [FindPackageShare("arm_mazzolini"), "launch", "gz_sim_silent.launch.py"]
             )
         ),
         launch_arguments={
             # 'gz_args': 'default.sdf',
             'gz_args': PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "worlds", "agricultural_world.sdf"]),
-            # 'gz_args': 'camera_sensor.sdf',
             'use_sim_time': use_sim_time,
-            "verbose": "true",
+            "verbose": "false",
         }.items(),
     )
+    gazebo = []
+    # gazebo.append(SetEnvironmentVariable(
+    #     name='RCUTILS_LOGGING_SEVERITY_THRESHOLD',
+    #     value='30'   # 10=DEBUG, 20=INFO, 30=WARN, 40=ERROR, 50=FATAL
+    # ))
+    gazebo.append(gz_launch)
 
     # Nodes
     nodes = []
@@ -178,7 +192,8 @@ def generate_launch_description():
         # '/simulated_D435/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo', # Should I use it?
         '/simulated_D435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
         '/simulated_D435/image@sensor_msgs/msg/Image[gz.msgs.Image',
-        '/model/weeder_robot/pose@geometry_msgs/msg/Pose[gz.msgs.Pose',
+        # '/model/weeder_robot/pose@geometry_msgs/msg/Pose[gz.msgs.Pose',
+        '/world/default/dynamic_pose/info@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
         ],
         condition=IfCondition(use_sim_time),
         output='screen'
@@ -205,7 +220,7 @@ def generate_launch_description():
     # )
     # nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[rviz_target_visualizer])])))
 
-    # This node spawns controllers (diff drive, joint trajectory), kinematic node and target spawner when simulation starts
+    # This node spawns controllers (diff drive, joint trajectory), weeder controller and target spawner when simulation starts
     simulation_spawner = Node(
         package='arm_mazzolini',
         executable='simulation_process_spawner.py',
@@ -214,6 +229,7 @@ def generate_launch_description():
             'controller_yaml': controller_config_file,
             'world_height': world_height,
             'use_sim_time': use_sim_time,
+            'use_real_hw': use_real_hw,
             'output_file': output_file,
         }],
         condition = IfCondition(use_sim_time), # This node works only in simulation
@@ -289,15 +305,17 @@ def generate_launch_description():
     # )
     # nodes.append(point_cloud_node)
 
-    # weeder_controller = Node(
-    #     package="arm_mazzolini",
-    #     executable="weeder_controller",
-    #     name="weeder_controller",
-    #     parameters=[{"use_sim_time": use_sim_time},
-    #                 controller_config_file],
-    #     condition = IfCondition( PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"]))
-    # )
-    # nodes.append(weeder_controller)
+    weeder_controller = Node(
+        package="arm_mazzolini",
+        executable="weeder_controller",
+        name="weeder_controller",
+        parameters=[
+            {"use_sim_time": use_sim_time},
+            {"use_real_hw": use_real_hw},
+                    controller_config_file],
+        condition = UnlessCondition(use_sim_time)
+    )
+    nodes.append(weeder_controller)
 
 
-    return LaunchDescription(declared_arguments + [gz_launch] + nodes)
+    return LaunchDescription(declared_arguments + gazebo + nodes)

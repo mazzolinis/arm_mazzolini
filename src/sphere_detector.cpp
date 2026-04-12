@@ -104,7 +104,8 @@ namespace arm_mazzolini
         cv::Mat mask = createMask(rgb);
         mask = cleanMask(mask);
 
-        bool found = findLargestBlob(mask, centroid);
+        // bool found = findLargestBlob(mask, centroid);
+        bool found = findPlantCentroid(mask, centroid);
         if (!found)
         {
             return false;
@@ -252,6 +253,46 @@ namespace arm_mazzolini
         return true;
     }
 
+    bool SphereDetector::findPlantCentroid(const cv::Mat &mask, cv::Point &centroid)
+    {
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+        if (contours.empty())
+        {
+            return false;
+        }
+
+        double sum_x = 0.0;
+        double sum_y = 0.0;
+        double total_area = 0.0;
+
+        for (const auto& contour : contours)
+        {
+            double area = cv::contourArea(contour);
+            if (area < area_threshold)
+                continue;
+
+            cv::Moments mu = cv::moments(contour);
+            if (mu.m00 == 0)
+                continue;
+
+            double cx = mu.m10 / mu.m00;
+            double cy = mu.m01 / mu.m00;
+
+            sum_x += cx * area;
+            sum_y += cy * area;
+            total_area += area;
+        }
+
+        if (total_area == 0.0)
+            return false;
+
+        centroid.x = static_cast<int>(sum_x / total_area);
+        centroid.y = static_cast<int>(sum_y / total_area);
+
+        return true;
+    }
 
     double SphereDetector::getDepthMedian(const cv::Mat& depth, const cv::Point& center)
     {

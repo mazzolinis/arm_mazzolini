@@ -17,6 +17,8 @@
 #include <tf2_ros/buffer.h>
 
 #include <memory>
+#include <thread>
+#include <atomic>
 
 #include "arm_mazzolini/sphere_detector.hpp"
 #include "arm_mazzolini/arm_kinematic.hpp"
@@ -27,6 +29,7 @@ namespace arm_mazzolini
     {
         public:
             WeederController();
+            ~WeederController();
 
         private:
 
@@ -72,13 +75,17 @@ namespace arm_mazzolini
         const std::vector<double> initial_joint_values = {-M_PI/3, M_PI/3}; 
         std::vector<double> joint_states = initial_joint_values;
         std::vector<double> last_joint_angles;
-        const double joint_tolerance = 1e-3; // radians
+        const double joint_tolerance = 2e-4; // radians
 
         // Timers
         rclcpp::TimerBase::SharedPtr pose_timer;
         rclcpp::TimerBase::SharedPtr control_timer;
         int control_dt;
         int trajectory_dt;
+
+        // Thread
+        std::thread keyboard_thread;
+        std::atomic<bool> keyboard_thread_active_{false};
 
         // Control and filter gains
         Eigen::Vector3d target_feature = Eigen::Vector3d::Zero(); // u, v, Z feature of the target in camera frame

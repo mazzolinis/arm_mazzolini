@@ -46,6 +46,7 @@ class TargetSpawner : public rclcpp::Node
         rclcpp::TimerBase::SharedPtr timer;
         std::unique_ptr<tf2_ros::Buffer> tf_buffer;
         std::shared_ptr<tf2_ros::TransformListener> tf_listener;
+        std::shared_ptr<rclcpp::Subscription<tf2_msgs::msg::TFMessage>> gz_sub_;
 
         // Callbacks
         void timer_callback();
@@ -53,7 +54,7 @@ class TargetSpawner : public rclcpp::Node
         // void pose_callback(const geometry_msgs::msg::Pose::SharedPtr msg);
 
         // Variables
-        const int spawn_period = 3; // seconds between laser and new target
+        const int spawn_period = 2; // seconds between laser and new target
         const double min_distance = 0.1;
         const double max_distance = 0.45;
         const double angle_range = M_PI / 6;
