@@ -22,12 +22,48 @@ namespace arm_mazzolini
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), rgb_sub_, depth_sub_, info_sub_);
         sync_->registerCallback(std::bind(&WeederController::image_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-        // Joint states subscription
-        joint_state_sub = this->create_subscription<sensor_msgs::msg::JointState>(
-            "/joint_states", 
-            rclcpp::SensorDataQoS(),
-            std::bind(&WeederController::joint_states_callback, this, std::placeholders::_1)
-        );
+        if (use_real_hw) {
+            // Joint states subscription
+            states_subscription_ = this->create_subscription<pi3hat_moteus_int_msgs::msg::JointsStates>(
+                "state_broadcaster/joints_state",
+                10,
+                std::bind(&WeederController::real_states_callback, this, std::placeholders::_1)
+            );  
+
+            // Command publisher
+            command_publisher_ = this->create_publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>("joint_controller/command", 10);
+
+        }
+        if (use_sim_time) {
+
+            // Joint states subscription
+            joint_state_sub = this->create_subscription<sensor_msgs::msg::JointState>(
+                "/joint_states", 
+                rclcpp::SensorDataQoS(),
+                std::bind(&WeederController::joint_states_callback, this, std::placeholders::_1)
+            );
+
+            // Joint trajectory controller action client
+            joints_client = rclcpp_action::create_client<control_msgs::action::FollowJointTrajectory>(
+                this,
+                "/joint_trajectory_controller/follow_joint_trajectory"
+            );
+            if (joints_client->wait_for_action_server(std::chrono::seconds(10)) == false) {
+                RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
+                RCLCPP_ERROR(this->get_logger(), "Shutting down...");
+                rclcpp::shutdown();
+            }
+            goal_options.result_callback = std::bind(&WeederController::result_callback, this, std::placeholders::_1);
+            goal_msg.trajectory.joint_names = joint_names;
+
+        }
+        else if (!use_sim_time && !use_real_hw) {
+            RCLCPP_ERROR(this->get_logger(), "==============================================================");
+            RCLCPP_ERROR(this->get_logger(), "INVALID CONFIGURATION: AT LEAST ONE OF 'use_sim_time' OR 'use_real_hw' MUST BE TRUE");
+            RCLCPP_ERROR(this->get_logger(), "==============================================================");
+            RCLCPP_ERROR(this->get_logger(), "Shutting down...");
+            rclcpp::shutdown();
+        }
 
         // TF2 listener
         tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -40,23 +76,10 @@ namespace arm_mazzolini
         );
         last_warning_time = this->now();
 
-        // Action Client
-        joints_client = rclcpp_action::create_client<control_msgs::action::FollowJointTrajectory>(
-            this,
-            "/joint_trajectory_controller/follow_joint_trajectory"
-        );
-        if (joints_client->wait_for_action_server(std::chrono::seconds(10)) == false) {
-            RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
-            RCLCPP_ERROR(this->get_logger(), "Shutting down...");
-            rclcpp::shutdown();
-        }
-        goal_options.result_callback = std::bind(&WeederController::result_callback, this, std::placeholders::_1);
-        goal_msg.trajectory.joint_names = joint_names;
-
-        // Publisher
+        // Laser publisher
         laser_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("/lasered_position", 10);
 
-        // Visual servoing
+        // Timer for visual servoing
         control_timer = rclcpp::create_timer(
             this,
             this->get_clock(),
@@ -96,6 +119,12 @@ namespace arm_mazzolini
             this->declare_parameter("visual_servoing.smoothing", double());
             this->declare_parameter("visual_servoing.control_threshold", 0.005);
             this->declare_parameter("visual_servoing.desired_feature", std::vector<double>());
+            // this->declare_parameter("use_sim_time", true);
+            this->declare_parameter("use_real_hw", false);
+
+            // First get simulation and hardware flags
+            use_sim_time = this->get_parameter("use_sim_time").as_bool();
+            use_real_hw = this->get_parameter("use_real_hw").as_bool();
 
             // Arm lengths
             l1 = this->get_parameter("link1_length").as_double();
@@ -334,6 +363,54 @@ namespace arm_mazzolini
         );
     }
 
+    void WeederController::real_states_callback(
+        const pi3hat_moteus_int_msgs::msg::JointsStates::SharedPtr msg)
+    {
+        if (controller_status == ControllerStatus::NO_TARGET) {
+            return;
+        }
+        // only register positions right now, efforts can be added later if needed
+
+        std::vector<double> joint_positions = joint_states; // if something goes wrong, I don't want to lose current joint states, so I work on a copy and then update only if everything is fine
+        for(size_t i = 0; i < msg->name.size(); i++) {
+            if(std::isfinite(msg->position[i])) {
+                // Check if the joint is one of the joints we are interested in
+                size_t idx = std::find(joint_names.begin(), joint_names.end(), msg->name[i]) - joint_names.begin();
+                if (idx < joint_names.size()) {
+                    // Update data
+                    joint_positions[idx] = msg->position[i];
+                }
+            }
+            else if(std::isfinite(msg->sec_enc_pos[i])) {
+                // Check if the joint is one of the joints we are interested in
+                size_t idx = std::find(joint_names.begin(), joint_names.end(), msg->name[i]) - joint_names.begin();
+                if (idx < joint_names.size()) {
+                    // Update data
+                    joint_positions[idx] = msg->sec_enc_pos[i];
+                }
+            }
+            else {
+                continue;
+            }
+        }
+
+        if (controller_status == ControllerStatus::ARM_MOVING && vectors_are_equal(joint_positions, last_joint_angles)) {
+            RCLCPP_INFO(this->get_logger(), "Arm reached target position");
+            controller_status = ControllerStatus::POSITIONING;
+        }
+        else {
+            joint_states = joint_positions;
+        }
+
+        
+        RCLCPP_DEBUG(
+            this->get_logger(),
+            "Real Joint states updated: joint1=%.3f joint2=%.3f",
+            joint_states[0],
+            joint_states[1]
+        );
+    }
+
     
     void WeederController::pose_timer_callback()
     {
@@ -384,7 +461,7 @@ namespace arm_mazzolini
             case ControllerStatus::ARM_MOVING:
             {
                 if (!new_pose.isApprox(old_pose, pose_threshold)) {
-                    RCLCPP_WARN(this->get_logger(), "STOP!! Arm moving. Movement aborted.");
+                    RCLCPP_INFO(this->get_logger(), "STOP!! Arm moving. Movement aborted.");
                     target_buffer.clear();
                     controller_status = ControllerStatus::HAS_TARGET;
                     joints_client->async_cancel_all_goals();
@@ -462,18 +539,29 @@ namespace arm_mazzolini
             return;
         }
         last_joint_angles = joint_angles;
-        goal_msg.trajectory.points.clear();
-        trajectory_msgs::msg::JointTrajectoryPoint point;
-        point.positions = joint_angles;
-        if (controller_status == ControllerStatus::POSITIONING) {
-            point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_dt));
-        }
-        else {
-            point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_time_ms));
-        }
-        goal_msg.trajectory.points.push_back(point);
 
-        joints_client->async_send_goal(goal_msg, goal_options);
+        if (use_sim_time) {
+            goal_msg.trajectory.points.clear();
+            trajectory_msgs::msg::JointTrajectoryPoint point;
+            point.positions = joint_angles;
+            if (controller_status == ControllerStatus::POSITIONING) {
+                point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_dt));
+            }
+            else {
+                point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_time_ms));
+            }
+            goal_msg.trajectory.points.push_back(point);
+
+            joints_client->async_send_goal(goal_msg, goal_options);
+        }
+        if (use_real_hw) {
+            pi3hat_moteus_int_msgs::msg::JointsCommand command_msg;
+            command_msg.name = joint_names;
+            command_msg.position = joint_angles;
+            command_msg.kp_scale = kp_scale;
+            command_msg.kd_scale = kd_scale;
+            command_publisher_->publish(command_msg);
+        }
     }
 
     void WeederController::result_callback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult & result)

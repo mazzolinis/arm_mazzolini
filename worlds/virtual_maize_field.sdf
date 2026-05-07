@@ -1,0 +1,2758 @@
+<?xml version="1.0"?>
+<!-- Seed: 1170 -->
+<sdf version="1.9">
+  <world name="agricultural_world">
+
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>0.3</real_time_factor>
+    </physics>
+
+    <plugin
+      filename="gz-sim-physics-system"
+      name="gz::sim::systems::Physics">
+    </plugin>
+    <plugin
+      filename="gz-sim-sensors-system"
+      name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin
+      filename="gz-sim-user-commands-system"
+      name="gz::sim::systems::UserCommands">
+    </plugin>
+    <plugin
+      filename="gz-sim-scene-broadcaster-system"
+      name="gz::sim::systems::SceneBroadcaster">
+    </plugin>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <scene>
+      <grid>false</grid>
+    </scene>
+
+    <gui fullscreen="0">
+
+      <plugin filename="MinimalScene" name="3D View">
+        <ignition-gui>
+          <title>3D View</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="string" key="state">docked</property>
+        </ignition-gui>
+        <engine>ogre2</engine>
+        <scene>scene</scene>
+        <ambient_light>0.4 0.4 0.4</ambient_light>
+        <background_color>0.8 0.8 0.8</background_color>
+        <camera_pose>-6 0 6 0 0.5 0</camera_pose>
+      </plugin>
+
+      <plugin filename="EntityContextMenuPlugin" name="Entity context menu">
+        <ignition-gui>
+          <property key="state" type="string">floating</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </ignition-gui>
+      </plugin>
+
+      <plugin filename="GzSceneManager" name="Scene Manager">
+        <ignition-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </ignition-gui>
+      </plugin>
+
+      <plugin filename="InteractiveViewControl" name="Interactive view control">
+        <ignition-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </ignition-gui>
+      </plugin>
+
+      <plugin filename="CameraTracking" name="Camera Tracking">
+        <ignition-gui>
+          <property key="resizable" type="bool">false</property>
+          <property key="width" type="double">5</property>
+          <property key="height" type="double">5</property>
+          <property key="state" type="string">floating</property>
+          <property key="showTitleBar" type="bool">false</property>
+        </ignition-gui>
+      </plugin>
+
+      <plugin filename="WorldControl" name="World control">
+        <ignition-gui>
+          <title>World control</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">72</property>
+          <property type="double" key="width">121</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="left" target="left"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </ignition-gui>
+        <play_pause>true</play_pause>
+        <step>true</step>
+        <start_paused>true</start_paused>
+        <use_event>true</use_event>
+      </plugin>
+
+      <plugin filename="WorldStats" name="World stats">
+        <ignition-gui>
+          <title>World stats</title>
+          <property type="bool" key="showTitleBar">false</property>
+          <property type="bool" key="resizable">false</property>
+          <property type="double" key="height">110</property>
+          <property type="double" key="width">290</property>
+          <property type="double" key="z">1</property>
+          <property type="string" key="state">floating</property>
+          <anchors target="3D View">
+            <line own="right" target="right"/>
+            <line own="bottom" target="bottom"/>
+          </anchors>
+        </ignition-gui>
+        <sim_time>true</sim_time>
+        <real_time>true</real_time>
+        <real_time_factor>true</real_time_factor>
+        <iterations>true</iterations>
+      </plugin>
+
+      <plugin filename="ImageDisplay" name="Image Display">
+        <ignition-gui>
+          <property key="state" type="string">docked</property>
+        </ignition-gui>
+      </plugin>
+
+      <plugin filename="ComponentInspector" name="Component inspector">
+        <ignition-gui>
+          <property type="string" key="state">docked</property>
+        </ignition-gui>
+      </plugin>
+
+      <plugin filename="EntityTree" name="Entity tree">
+        <ignition-gui>
+          <property type="string" key="state">docked</property>
+        </ignition-gui>
+      </plugin>
+
+    </gui>
+
+    <model name="heightmap">
+      <static>true</static>
+      <link name="link">
+        <visual name="ground_plane">
+          <geometry>
+            <heightmap>
+              <use_terrain_paging>false</use_terrain_paging>
+              <texture>
+                <diffuse>model://materials/textures/grass_color.jpg</diffuse>
+                <normal>model://materials/textures/grass_normal.jpg</normal>
+                <size>4</size>
+              </texture>
+              <texture>
+                <diffuse>model://materials/textures/dirt_diffusespecular.png</diffuse>
+                <normal>model://materials/textures/flat_normal.png</normal>
+                <size>1</size>
+              </texture>
+              <!-- <texture>
+                <diffuse>model://materials/textures/grass_color.jpg</diffuse>
+                <normal>model://materials/textures/grass_normal.jpg</normal>
+                <size>4</size>
+              </texture> -->
+              <!-- Without this unused 3. texture the blend between the first 2 doesn"t work -->
+              <texture>
+                <diffuse>model://materials/textures/fungus_diffusespecular.png</diffuse>
+                <normal>model://materials/textures/flat_normal.png</normal>
+                <size>1</size>
+              </texture>
+              <blend>
+                <min_height>0.2</min_height>
+                <fade_dist>0.05</fade_dist>
+              </blend>
+              <!-- <blend>
+                <min_height>0.30000000000000004</min_height>
+                <fade_dist>0.05</fade_dist>
+              </blend> -->
+              <!-- Without this unused 3. texture the blend between the first 2 doesn"t work -->
+              <blend>
+                <min_height>4</min_height>
+                <fade_dist>5</fade_dist>
+              </blend>
+              <uri>model://materials/textures/virtual_maize_field_heightmap.png</uri>
+              <size>26.98 26.98 0.4</size>
+              <pos>0 0 0</pos>
+            </heightmap>
+          </geometry>
+        </visual>
+        <collision name="collision">
+          <geometry>
+            <heightmap>
+              <uri>model://materials/textures/virtual_maize_field_heightmap.png</uri>
+              <size>26.98 26.98 0.4</size>
+              <pos>0 0 0</pos>
+            </heightmap>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0001">
+      <pose>-10.966813946927841 -5.557194668066516 0.236881767192068 0.0 0.0 5.900924971473652</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0004">
+      <pose>-10.946757985124254 -5.121452346152675 0.23275527312185385 0.0 0.0 1.2786993530071047</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0007">
+      <pose>-10.899801301101608 -4.514134872382084 0.26319632849558866 0.0 0.0 1.6506207877858416</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0010">
+      <pose>-10.64694429042071 -3.0609469996758287 0.27470590988151333 0.0 0.0 2.921757718230018</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0013">
+      <pose>-10.521388774421744 -2.625997128714019 0.2834379338588077 0.0 0.0 3.719011552646733</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0016">
+      <pose>-10.3472210514682 -2.1583125994390437 0.28250234425195314 0.0 0.0 0.0037580970057680177</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0019">
+      <pose>-10.032965271979373 -1.4032123598847663 0.27357832085208716 0.0 0.0 2.713487921367696</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0022">
+      <pose>-9.84707817774689 -1.0144214353094014 0.30671208678227063 0.0 0.0 3.1888117969618075</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0025">
+      <pose>-9.639017017594691 -0.6379858479394357 0.3117202789419265 0.0 0.0 0.7318637109269593</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0028">
+      <pose>-9.40268708491385 -0.2361411458910806 0.30807860838752915 0.0 0.0 4.549716316416752</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0031">
+      <pose>-9.14920018112711 0.17335602426040164 0.31489587208723363 0.0 0.0 4.237828569749516</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0034">
+      <pose>-8.867314777084042 0.5500809336105136 0.33261419884932863 0.0 0.0 3.3279885867440955</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0037">
+      <pose>-8.545814163149727 0.9418424063140572 0.3447239660689585 0.0 0.0 1.9600934270772072</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0040">
+      <pose>-8.23404798953857 1.318762636323079 0.33373193106701593 0.0 0.0 2.35206180705355</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0043">
+      <pose>-7.921875704634089 1.6990802704506471 0.2975688598136811 0.0 0.0 3.2877967364048377</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0046">
+      <pose>-7.5770394496604645 2.0353229997315943 0.29649860873122375 0.0 0.0 0.5160285887629614</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0049">
+      <pose>-7.240101896354499 2.3535667651976535 0.3087448606909065 0.0 0.0 3.118466430333647</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0052">
+      <pose>-6.854120637818904 2.6967260682292764 0.28650534391387733 0.0 0.0 0.5950464712957247</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0055">
+      <pose>-6.5270214650761575 2.9807313479406172 0.2903362168224714 0.0 0.0 4.288834540633922</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0058">
+      <pose>-6.130236398311426 3.2614832666275753 0.2939217734717655 0.0 0.0 5.736016578563374</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0061">
+      <pose>-4.967788602340459 4.046790382325625 0.28846121723240836 0.0 0.0 4.747547270320165</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0064">
+      <pose>-4.535199894766378 4.276875269637822 0.2876487744264107 0.0 0.0 3.6383534949102434</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0067">
+      <pose>-4.156104699267626 4.487463697838992 0.2853024078273449 0.0 0.0 3.9766638234764335</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0070">
+      <pose>-3.6904606532199775 4.711130104689953 0.29185369934098987 0.0 0.0 4.590692262130161</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0073">
+      <pose>-3.2496814624726653 4.884294906212707 0.2893565850435303 0.0 0.0 5.091216548190533</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0076">
+      <pose>-2.802791476718796 5.023516162859968 0.2833978905968046 0.0 0.0 1.9270719632068485</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0079">
+      <pose>-2.366034575681339 5.200915660779428 0.28617023923134915 0.0 0.0 0.31230662884906313</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0082">
+      <pose>-1.9561392359261207 5.313229072716075 0.294707370136121 0.0 0.0 4.7765072532113795</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0085">
+      <pose>-1.0780484172102733 5.516157188614313 0.29311028046866344 0.0 0.0 5.900495816368044</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0088">
+      <pose>-0.5499599829294307 5.6034005123507615 0.3011824684390958 0.0 0.0 6.229823948931142</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0091">
+      <pose>-0.03831500969484402 5.656168406847366 0.2878522638678363 0.0 0.0 4.378620578892912</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0094">
+      <pose>0.47083632475708626 5.690799217019016 0.30144642286357515 0.0 0.0 3.9663867143415072</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0097">
+      <pose>0.8772490202343349 5.711450282833729 0.2810725424231716 0.0 0.0 3.850301951493008</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0100">
+      <pose>1.398847344506426 5.721601667385681 0.26329384128268046 0.0 0.0 0.7464200891166897</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0103">
+      <pose>1.8238084573770754 5.71671524097202 0.27418359339360765 0.0 0.0 5.056807891046457</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0106">
+      <pose>2.310514041896199 5.6538190760375695 0.3035546279794156 0.0 0.0 2.000756667815759</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0109">
+      <pose>3.284942602569788 5.521635016047988 0.3497411942122265 0.0 0.0 6.182520344671275</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0112">
+      <pose>3.671467878113316 5.467542414746417 0.32539745720526536 0.0 0.0 5.3997245745014855</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0115">
+      <pose>4.148279580446238 5.376205990542241 0.33525505068581773 0.0 0.0 2.899457616564004</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0118">
+      <pose>4.67487140070786 5.2099852192492655 0.3548794971752638 0.0 0.0 6.241938246361674</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0121">
+      <pose>5.114457211865743 5.078929855723896 0.35431103016351007 0.0 0.0 1.379778079200791</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0124">
+      <pose>5.616908166780841 4.94153663446291 0.346519284261652 0.0 0.0 0.6627679381045843</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0127">
+      <pose>6.055242616615973 4.8557241915868925 0.31929296611771957 0.0 0.0 3.7585888527422124</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0130">
+      <pose>6.546387371378677 4.790552345263869 0.3215723778872359 0.0 0.0 2.559971407483147</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0133">
+      <pose>7.658577633494565 4.814054104315188 0.30172575926164524 0.0 0.0 1.094395989666618</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0136">
+      <pose>8.138319521594822 4.902339403587565 0.27350099323701066 0.0 0.0 0.022337416305899593</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0139">
+      <pose>8.62113371910158 5.034580594711729 0.28629306205066185 0.0 0.0 5.815017163604552</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0142">
+      <pose>9.394782040419779 5.356950070044931 0.30042881846692704 0.0 0.0 4.7917327381251145</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+    <model name="maize_02_0295">
+      <pose>-9.466192026182677 -5.60088248934434 0.22466016877010736 0.0 0.0 2.528299680142921</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0298">
+      <pose>-9.471556845024542 -5.105870513291107 0.2364478341282974 0.0 0.0 2.662167768972749</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0301">
+      <pose>-9.427005978389616 -4.645151482912458 0.23601928275636525 0.0 0.0 0.06598636311072728</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0304">
+      <pose>-9.320491788622896 -4.147027480825382 0.22805446464316123 0.0 0.0 2.5657468359429463</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0307">
+      <pose>-9.12007152498276 -3.278205272092258 0.263793140488449 0.0 0.0 3.031688988952643</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0310">
+      <pose>-8.86794005199158 -2.5184563675694673 0.29710072893251155 0.0 0.0 2.58171166384445</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0313">
+      <pose>-8.694051762347874 -2.0723340859336545 0.3075661815805938 0.0 0.0 5.767168732389644</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0316">
+      <pose>-8.506131982039946 -1.6932151447985966 0.31272372333976556 0.0 0.0 3.6716084849203194</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0319">
+      <pose>-8.242180319149318 -1.206459738796795 0.30711020322004273 0.0 0.0 4.127474684319136</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0322">
+      <pose>-8.016635949155072 -0.8469837401743955 0.31029997419389405 0.0 0.0 4.122214123554494</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0325">
+      <pose>-7.729043807260552 -0.40346201214807575 0.3052293844341998 0.0 0.0 2.4772507325156963</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0328">
+      <pose>-7.456038700515667 -0.07224403824800707 0.3097641861580681 0.0 0.0 5.8952761250768155</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0331">
+      <pose>-7.142681702813861 0.2716780788527887 0.3057358603174944 0.0 0.0 5.156083786077882</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0334">
+      <pose>-6.841167364254537 0.6346353194695417 0.306876940679629 0.0 0.0 2.3987426487977515</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0337">
+      <pose>-6.541259669647612 0.9471083022477068 0.28684610155588475 0.0 0.0 3.4693852325212235</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0340">
+      <pose>-6.150623015445657 1.292027445736582 0.2617661657118821 0.0 0.0 1.6996612382449343</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0343">
+      <pose>-5.780563712210602 1.6236018083991954 0.25698148473407323 0.0 0.0 4.509766597233961</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0346">
+      <pose>-5.383390530190078 1.9423477049429447 0.2727393546359828 0.0 0.0 3.0808494994048883</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0349">
+      <pose>-4.768397530260658 2.4090472276967194 0.30488426847925704 0.0 0.0 2.8694025277610757</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0352">
+      <pose>-4.3812932457266225 2.6601954771101397 0.30014479229152613 0.0 0.0 2.4489645292632987</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0355">
+      <pose>-3.9657321322461296 2.8883933380646454 0.2932042765842545 0.0 0.0 2.597513411357824</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0358">
+      <pose>-3.5731448589118244 3.079021308301023 0.27818682053619564 0.0 0.0 4.0232310143105865</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0361">
+      <pose>-3.151356171770237 3.310844593634531 0.3031406126581179 0.0 0.0 1.628785555367904</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0364">
+      <pose>-2.7441797266878725 3.4650214184840387 0.32499761627143936 0.0 0.0 0.38486815102060595</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0367">
+      <pose>-2.2850531082483085 3.618587047416007 0.3021393550179321 0.0 0.0 2.4592157191743165</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0370">
+      <pose>-1.8105357457917792 3.802973225404651 0.29156470380946503 0.0 0.0 4.756965348519539</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0373">
+      <pose>-1.3700439219730276 3.895550497883459 0.3125736670471314 0.0 0.0 0.2499431302704589</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0376">
+      <pose>-0.8639065250978436 4.0080975653711395 0.30702413021475383 0.0 0.0 5.025971394946155</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0379">
+      <pose>-0.40204898468128036 4.110465343805037 0.30092605551024204 0.0 0.0 2.3005116086520183</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0382">
+      <pose>0.04056366980583171 4.151211929000754 0.3007093899773696 0.0 0.0 1.780514781937503</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0385">
+      <pose>0.5772173311287795 4.217084045482702 0.2741207125196312 0.0 0.0 1.6504783639209053</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0388">
+      <pose>1.0211732578555344 4.223190916001663 0.28986014364785545 0.0 0.0 1.4049058423785683</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0391">
+      <pose>1.4800822413943449 4.204349213044914 0.3109544356640104 0.0 0.0 4.2175410903595045</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0394">
+      <pose>1.9839223899780771 4.200083761204052 0.32353002828012534 0.0 0.0 3.3178995990340967</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0397">
+      <pose>2.445397312587759 4.134723121318249 0.3441668325514866 0.0 0.0 5.068700044221151</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0400">
+      <pose>2.9083731879089116 4.070308018171129 0.36171694670987486 0.0 0.0 0.16270748473579785</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0403">
+      <pose>3.4012085922960553 3.9753653664913884 0.36278208078211827 0.0 0.0 0.8110533127949364</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0406">
+      <pose>3.812590693413619 3.8804444017835547 0.35654814079323505 0.0 0.0 5.334589623735219</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0409">
+      <pose>4.600005275748168 3.6549401496318463 0.3513722941921632 0.0 0.0 2.855266262404207</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0412">
+      <pose>5.07984514130846 3.5157764486886567 0.3637565682323027 0.0 0.0 2.575723976555269</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0415">
+      <pose>6.237435452049552 3.307835023024122 0.34892439377840573 0.0 0.0 2.9757517852364006</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0418">
+      <pose>6.693454377201689 3.2874794887903107 0.3159802894679666 0.0 0.0 2.9849218805138125</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0421">
+      <pose>7.154568162263458 3.2850193939903978 0.3124642903408376 0.0 0.0 0.20758143822940867</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0424">
+      <pose>7.643110318939082 3.294032294606186 0.30704684005772065 0.0 0.0 4.710954867795098</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0427">
+      <pose>8.150381171641731 3.3672683441430387 0.28562880536437607 0.0 0.0 2.0556920303698565</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0430">
+      <pose>8.588926811141514 3.4834018323860096 0.28611702948847956 0.0 0.0 5.083376921638532</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0433">
+      <pose>9.042876471933889 3.6101609895184215 0.2940977613501601 0.0 0.0 4.665348558758638</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0436">
+      <pose>9.47135986442404 3.7582872204624937 0.2926177848640946 0.0 0.0 0.5094858824259432</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0439">
+      <pose>9.94568518305429 3.943701856173007 0.29698947576738444 0.0 0.0 6.180162914351234</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+    <model name="maize_02_0583">
+      <pose>-7.982502972079918 -5.7270013201971075 0.23420336119387408 0.0 0.0 0.9578119115153123</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0586">
+      <pose>-7.980217580049104 -5.238750013084656 0.22201284549756917 0.0 0.0 2.4373068864650786</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0589">
+      <pose>-7.900307923226035 -4.792556603527337 0.23133625867412919 0.0 0.0 0.0915995419056947</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0592">
+      <pose>-7.848856147260039 -4.320906020448629 0.24213831086467616 0.0 0.0 3.7991702213620537</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0595">
+      <pose>-7.7483399150375964 -3.8814543203915886 0.25688922341848114 0.0 0.0 2.7320223583319567</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0598">
+      <pose>-7.60604238378314 -3.398728530636447 0.26021561221894646 0.0 0.0 0.4682297432654204</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0601">
+      <pose>-7.4276122051057465 -2.929875807472113 0.2599351691414986 0.0 0.0 1.7727439585555085</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0604">
+      <pose>-7.250270300583581 -2.5393059973611645 0.2636481751659698 0.0 0.0 2.3876065602237255</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0607">
+      <pose>-7.027466043545117 -2.0982304733535675 0.2825311278252176 0.0 0.0 4.682221319634965</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0610">
+      <pose>-6.771517028392438 -1.6977386366169753 0.30815172064829854 0.0 0.0 3.101895408143374</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0613">
+      <pose>-6.495926871832625 -1.3139623977553478 0.305275023807111 0.0 0.0 2.2354895802615133</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0616">
+      <pose>-6.181997766539987 -0.9010232489691533 0.2983929678197214 0.0 0.0 0.6934729645254945</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0619">
+      <pose>-5.900198791864077 -0.568835836522049 0.2990361626879189 0.0 0.0 3.242172459644534</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0622">
+      <pose>-5.607236761881448 -0.24320659158643043 0.2975316730555607 0.0 0.0 4.019712858247587</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0625">
+      <pose>-5.299363668348326 0.058920758494873555 0.3050310178030957 0.0 0.0 0.3193065192172053</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0628">
+      <pose>-4.955713713767351 0.3515109267310511 0.30882728464320985 0.0 0.0 4.3792582900463435</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0631">
+      <pose>-4.584646137542581 0.6993398186308831 0.31142769522314384 0.0 0.0 5.096363790785294</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0634">
+      <pose>-4.188837454016568 0.9796236899091805 0.2960836121867895 0.0 0.0 4.840385958860345</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0637">
+      <pose>-3.84046434356065 1.2033906884589634 0.2997247710140551 0.0 0.0 4.109662763326583</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0640">
+      <pose>-3.411937444238365 1.4835725540531142 0.2992857796423924 0.0 0.0 0.7466796535005378</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0643">
+      <pose>-2.9594874599525083 1.7380167870355452 0.2927940074434126 0.0 0.0 1.3810726835775398</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0646">
+      <pose>-2.4925229484505325 1.948280833605149 0.3086544584101807 0.0 0.0 3.6505282968219004</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0649">
+      <pose>-2.025834191862976 2.133493664173084 0.32760586994203456 0.0 0.0 0.9728140736552459</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0652">
+      <pose>-1.5443163551088324 2.299119353808395 0.34141491324108597 0.0 0.0 3.425044732853802</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0655">
+      <pose>-1.10002059013227 2.429813460248303 0.34167713439057396 0.0 0.0 5.549690168482468</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0658">
+      <pose>-0.6128811771249271 2.5350708917841036 0.33826333593635155 0.0 0.0 0.5903906917780283</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0661">
+      <pose>-0.17777683601244754 2.596854606264664 0.3332369145489419 0.0 0.0 3.4746750768254153</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0664">
+      <pose>0.31774284553507826 2.6679641927348037 0.34287687548245505 0.0 0.0 3.029155475882443</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0667">
+      <pose>0.7789299401817392 2.6951514761571893 0.3464594464771744 0.0 0.0 1.4583479543621605</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0670">
+      <pose>1.3009488267374847 2.699067630219087 0.3464471505428794 0.0 0.0 5.424944942357319</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0673">
+      <pose>1.7233895032339843 2.7065895943926215 0.33468596507311127 0.0 0.0 3.345644072672634</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0676">
+      <pose>2.231999991100639 2.6568125086032524 0.3287010624310569 0.0 0.0 0.552545372802809</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0679">
+      <pose>2.6859391803558355 2.5943126637093634 0.3379868518847346 0.0 0.0 3.4133386011519566</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0682">
+      <pose>3.203682048638785 2.483162659729139 0.360814113728005 0.0 0.0 2.8842977959007023</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0685">
+      <pose>3.668565215925251 2.3986702681299974 0.37593852253948185 0.0 0.0 3.4924492131422014</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0688">
+      <pose>4.125927850526902 2.2521987932192573 0.3606763785473606 0.0 0.0 0.3737917198284915</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0691">
+      <pose>4.582407259199337 2.1029078846679266 0.3591672732739384 0.0 0.0 3.438680431778766</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0694">
+      <pose>5.032952199976363 1.9713735107476502 0.3567921909954625 0.0 0.0 2.478637037622784</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0697">
+      <pose>5.516082299835239 1.8874916602216931 0.3517578280760445 0.0 0.0 1.9456659202831879</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0700">
+      <pose>5.9949945168482435 1.8379884887893807 0.33364908732835213 0.0 0.0 0.6712987940477271</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0703">
+      <pose>6.448478377925837 1.7825207205045528 0.33718972598964314 0.0 0.0 1.45152554289836</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0706">
+      <pose>6.970419559292956 1.7863720910681211 0.3361164365813324 0.0 0.0 2.7042736964486447</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0709">
+      <pose>7.442322399313446 1.799081866115312 0.3330677876149031 0.0 0.0 3.1250578764590555</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0712">
+      <pose>7.911117582581183 1.8342822590817853 0.30897423399204516 0.0 0.0 0.5548083588643292</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0715">
+      <pose>8.39150813945138 1.912882469479828 0.3192530462176615 0.0 0.0 1.4589522034505071</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0718">
+      <pose>8.815343847418278 2.0046365559158685 0.3134866521715884 0.0 0.0 4.705457590089376</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0721">
+      <pose>9.321235859039698 2.133352464814899 0.3178085787361674 0.0 0.0 2.4357222684234734</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0724">
+      <pose>9.80130171026918 2.2585144371950445 0.30914630851408326 0.0 0.0 3.1932202004347734</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_01_0727">
+      <pose>10.255435709432229 2.4493211350243254 0.28927290320530846 0.0 0.0 1.9780108489975614</pose>
+      <static>true</static>
+      <link name="maize_01_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_01/meshes/maize_01.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+    <model name="maize_02_0730">
+      <pose>10.698126951469584 2.635176406160845 0.2720861024882485 0.0 0.0 5.866468658448564</pose>
+      <static>true</static>
+      <link name="maize_02_link">
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>model://maize_02/meshes/maize_02.dae</uri>
+              <scale>0.683166466464586 0.683166466464586 0.683166466464586</scale>
+            </mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+    <include>
+      <uri>model://maize_02</uri>
+      <pose>-1.5378920225353019 1.5026075024741337 0.32660367679804275 0.0 0.0 1.8998716245014902</pose>
+      <name>maize_02_0793</name>
+      <static>false</static>
+    </include> 
+     
+     
+    <include>
+      <uri>model://maize_02</uri>
+      <pose>-1.0944540947242443 1.6401646307459075 0.31809756088524055 0.0 0.0 3.5397004260026135</pose>
+      <name>maize_02_0796</name>
+      <static>false</static>
+    </include> 
+     
+     
+    <include>
+      <uri>model://maize_01</uri>
+      <pose>-0.6470115151443184 1.753340713298476 0.3136231536054728 0.0 0.0 1.4032771463719271</pose>
+      <name>maize_01_0799</name>
+      <static>false</static>
+    </include> 
+     
+     
+    <include>
+      <uri>model://maize_01</uri>
+      <pose>-0.13304580618530892 1.858209607639524 0.3279492955760739 0.0 0.0 2.9792731098105625</pose>
+      <name>maize_01_0802</name>
+      <static>false</static>
+    </include> 
+     
+     
+    <include>
+      <uri>model://maize_02</uri>
+      <pose>0.36529132113791796 1.93755543580078 0.3453126390224445 0.0 0.0 0.809257785386519</pose>
+      <name>maize_02_0805</name>
+      <static>false</static>
+    </include> 
+     
+     
+    <include>
+      <uri>model://maize_01</uri>
+      <pose>0.8319747464200525 1.970357411224012 0.3586427523203575 0.0 0.0 3.5678275199172123</pose>
+      <name>maize_01_0808</name>
+      <static>false</static>
+    </include> 
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+  </world>
+</sdf>

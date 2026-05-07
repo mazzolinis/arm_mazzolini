@@ -166,14 +166,18 @@ class SimulationProcessSpawner(Node):
     # =====================================================
     def get_params(self):
 
+        self.declare_parameter('use_real_hw', False)
+        self.use_real_hw = self.get_parameter('use_real_hw').get_parameter_value().bool_value
         self.declare_parameter('controller_yaml', ' ')
         self.controller_yaml = self.get_parameter('controller_yaml').get_parameter_value().string_value
         self.get_logger().debug(f'Using controller YAML: {self.controller_yaml}')
+        self.declare_parameter('parameters_yaml', ' ')
+        self.parameters_yaml = self.get_parameter('parameters_yaml').get_parameter_value().string_value
+        self.get_logger().debug(f'Using weeder parameters YAML: {self.parameters_yaml}')
         self.declare_parameter('world_height', 0.0)
         self.world_height = self.get_parameter('world_height').get_parameter_value().double_value
         self.declare_parameter('output_file', ' ')
         self.output_file = self.get_parameter('output_file').get_parameter_value().string_value
-        # self.use_real_hw = self.get_parameter('use_real_hw').get_parameter_value().bool_value
 
     # =====================================================
 #                       NODES ARE WRITTEN HERE 
@@ -252,8 +256,8 @@ class SimulationProcessSpawner(Node):
                 executable='weeder_controller',
                 extra_args=[],
                 log_level='INFO',
-                params_file=self.controller_yaml,
-                # inline_params={'use_real_hw': self.use_real_hw},
+                params_file=self.parameters_yaml,
+                inline_params={'use_real_hw': self.use_real_hw},
                 delay=1.0,
                 interactive=True
             )
@@ -272,7 +276,11 @@ def main(args=None):
         pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        try:
+            rclpy.shutdown()
+        except rclpy._rclpy_pybind11.RCLError:
+            # rcl_shutdown already called (e.g., by signal handler)
+            pass
 
 
 if __name__ == '__main__':

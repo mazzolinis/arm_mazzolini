@@ -151,7 +151,7 @@ install(
   DESTINATION include
 )
 install(
-  DIRECTORY launch urdf config rviz meshes worlds
+  DIRECTORY launch urdf config rviz meshes worlds models
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -183,6 +183,7 @@ ament_python_install_package(${PROJECT_NAME})
 
 install(PROGRAMS
   arm_mazzolini/simulation_process_spawner.py
+  arm_mazzolini/video_recorder.py
   DESTINATION lib/${PROJECT_NAME}
 )
 # ============================================================================== #

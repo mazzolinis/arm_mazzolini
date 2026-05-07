@@ -150,6 +150,8 @@ void TargetSpawner::timer_callback()
 
     target_pub->publish(target_msg);
 
+    RCLCPP_INFO(this->get_logger(), "New target spawned at: [%.2f, %.2f, %.2f]", target_position.x(), target_position.y(), target_position.z());
+
     timer->cancel();
 }
 

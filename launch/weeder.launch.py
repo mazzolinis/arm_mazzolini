@@ -1,4 +1,3 @@
-# from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument,IncludeLaunchDescription, RegisterEventHandler, TimerAction, SetEnvironmentVariable
 from launch.conditions import IfCondition,UnlessCondition
@@ -38,7 +37,7 @@ def generate_launch_description():
     declared_arguments.append(
         DeclareLaunchArgument(
             "world_height",
-            default_value="2.0",
+            default_value="0.4",
             description="Height of barn relative to flat map",
         )
     )
@@ -73,21 +72,20 @@ def generate_launch_description():
     use_rviz = LaunchConfiguration("use_rviz")
     use_camera = LaunchConfiguration("use_camera")
 
+    # Other parameters (this can be set only from launch file)
     pkg_share = FindPackageShare("arm_mazzolini")
-
     robot_name = "weeder_robot"
-    
     controller = PythonExpression([
-        "'weeder_controller_light.yaml' if '", is_light, "' == 'true' else 'weeder_controller_heavy.yaml'"
-    ]) # This works
-    
+        "'light_controller.yaml' if '", is_light, "' == 'true' else 'heavy_controller.yaml'"   # This works
+    ])
     controller_config_file = PathJoinSubstitution(
         [pkg_share, "config", controller],
     )
-
+    parameters_file = PathJoinSubstitution([pkg_share, "config", "weeder_parameters.yaml"])
     camera_config_file = PathJoinSubstitution([pkg_share, "config", "simulated_D435_parameters.yaml"])
     output_file = PathJoinSubstitution(["/home", "simone", "Scrivania", "first_test_data.csv"])
 
+    # Path to robot description file (xacro)
     robot_description_content = Command(
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),
@@ -111,15 +109,17 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
                 # [FindPackageShare("ros_gz_sim"), "launch", "gz_sim.launch.py"]
-                [FindPackageShare("arm_mazzolini"), "launch", "gz_sim_silent.launch.py"]
+                [FindPackageShare("arm_mazzolini"), "launch", "gz_sim_silent.launch.py"] # replaced to avoid print at every message sent by controller
             )
         ),
         launch_arguments={
             # 'gz_args': 'default.sdf',
-            'gz_args': PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "worlds", "agricultural_world.sdf"]),
+            # 'gz_args': PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "worlds", "agricultural_world.sdf"]),
+            'gz_args': PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "worlds", "virtual_maize_field.sdf"]),
             'use_sim_time': use_sim_time,
             "verbose": "false",
         }.items(),
+        condition = IfCondition(use_sim_time),
     )
     gazebo = []
     # gazebo.append(SetEnvironmentVariable(
@@ -148,25 +148,27 @@ def generate_launch_description():
         executable = "create",
         arguments = ['-topic', '/robot_description',
                     '-name', robot_name,
-                    '-x', '0', '-y', '0', '-z', PythonExpression([height, ' + ', world_height]),
-                    '-R', '0', '-P', '0', '-Y', '0',],
+                    '-x', '0', '-y', '0.55', '-z', PythonExpression([height, ' + ', world_height]),
+                    '-R', '0', '-P', '0', '-Y', '-3.14159',],
         parameters=[{'use_sim_time': use_sim_time}],
         output = 'screen',
+        condition = IfCondition(use_sim_time),
     )
     nodes.append(spawn_entity)
     # nodes.append(TimerAction(period=5.0, actions=[spawn_entity]))
 
-    spawn_world = Node(
-        package = "ros_gz_sim",
-        executable = "create",
-        arguments = ['-file', PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "urdf", "agriculture_geometry.urdf"]),
-                     '-name', 'agriculture_world',
-                     '-x', '0', '-y', '-4.0', '-z', PythonExpression([world_height, '+ 0.1']),
-                     '-R', '0', '-P', '0', '-Y', '0',],
-        parameters=[{'use_sim_time': use_sim_time}],
-        output = 'screen',
-    )
-    nodes.append(spawn_world)
+    # spawn_world = Node(
+    #     package = "ros_gz_sim",
+    #     executable = "create",
+    #     arguments = ['-file', PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "urdf", "agriculture_geometry.urdf"]),
+    #                  '-name', 'agriculture_world',
+    #                  '-x', '0', '-y', '-4.0', '-z', PythonExpression([world_height, '+ 0.1']),
+    #                  '-R', '0', '-P', '0', '-Y', '0',],
+    #     parameters=[{'use_sim_time': use_sim_time}],
+    #     output = 'screen',
+    #     condition = IfCondition(use_sim_time),
+    # )
+    # nodes.append(spawn_world)
 
     rviz_config_file = PathJoinSubstitution(
         [FindPackageShare("arm_mazzolini"), "rviz", "second_config.rviz"]
@@ -182,34 +184,54 @@ def generate_launch_description():
     )
     nodes.append(rviz_node)
 
+    # gz_bridge=Node(
+    #     package='ros_gz_bridge',
+    #     executable='parameter_bridge',
+    #     arguments=[
+    #     '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
+    #     '/world/default/create@ros_gz_interfaces/srv/SpawnEntity',
+    #     '/world/default/remove@ros_gz_interfaces/srv/DeleteEntity',
+    #     # '/simulated_D435/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo', # Should I use it?
+    #     '/simulated_D435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
+    #     '/simulated_D435/image@sensor_msgs/msg/Image[gz.msgs.Image',
+    #     # '/model/weeder_robot/pose@geometry_msgs/msg/Pose[gz.msgs.Pose',
+    #     '/world/default/dynamic_pose/info@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+    #     ],
+    #     condition=IfCondition(use_sim_time),
+    #     output='screen'
+    # )
+    # nodes.append(gz_bridge)
+
     gz_bridge=Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
         arguments=[
         '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
-        '/world/default/create@ros_gz_interfaces/srv/SpawnEntity',
-        '/world/default/remove@ros_gz_interfaces/srv/DeleteEntity',
+        '/world/agricultural_world/create@ros_gz_interfaces/srv/SpawnEntity',
+        '/world/agricultural_world/remove@ros_gz_interfaces/srv/DeleteEntity',
         # '/simulated_D435/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo', # Should I use it?
         '/simulated_D435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
         '/simulated_D435/image@sensor_msgs/msg/Image[gz.msgs.Image',
         # '/model/weeder_robot/pose@geometry_msgs/msg/Pose[gz.msgs.Pose',
-        '/world/default/dynamic_pose/info@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+        '/world/agricultural_world/dynamic_pose/info@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
         ],
         condition=IfCondition(use_sim_time),
         output='screen'
     )
     nodes.append(gz_bridge)
 
+
     gazebo_target_visualizer = Node(
         package = "arm_mazzolini",
         executable = "gazebo_target_visualizer",
         name = "gazebo_target_visualizer",
         parameters = [{"use_sim_time":use_sim_time},
-                      controller_config_file],
-        output = "screen"
+                      parameters_file],
+        output = "screen",
+        condition = IfCondition(use_sim_time)
     )
-    nodes.append(gazebo_target_visualizer) 
-    
+    nodes.append(gazebo_target_visualizer)
+
     # rviz_target_visualizer = Node(
     #     package = "arm_mazzolini",
     #     executable = "rviz_target_visualizer",
@@ -227,6 +249,7 @@ def generate_launch_description():
         name='simulation_process_spawner',
         parameters=[{
             'controller_yaml': controller_config_file,
+            'parameters_yaml': parameters_file,
             'world_height': world_height,
             'use_sim_time': use_sim_time,
             'use_real_hw': use_real_hw,

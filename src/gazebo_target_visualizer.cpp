@@ -7,8 +7,8 @@ GazeboTargetVisualizer::GazeboTargetVisualizer()
   get_material_parameter("diffuse", diffuse_);
   get_material_parameter("specular", specular_);
   get_material_parameter("emissive", emissive_);
-  spawn_client_ = this->create_client<ros_gz_interfaces::srv::SpawnEntity>("/world/default/create");
-  delete_client_ = this->create_client<ros_gz_interfaces::srv::DeleteEntity>("/world/default/remove");
+  spawn_client_ = this->create_client<ros_gz_interfaces::srv::SpawnEntity>("/world/agricultural_world/create");
+  delete_client_ = this->create_client<ros_gz_interfaces::srv::DeleteEntity>("/world/agricultural_world/remove");
   
   target_sub_ = this->create_subscription<geometry_msgs::msg::PointStamped>(
     "/target_position", 10,
@@ -119,66 +119,97 @@ void GazeboTargetVisualizer::target_callback(const geometry_msgs::msg::PointStam
   //   </model>
   // </sdf>)";
 
-  // Plant (with stl mesh, correct SDF format)
+  // // Plant (with stl mesh, correct SDF format)
+  // std::string xml;
+  // xml += R"(<?xml version="1.0"?>)";
+  // xml += R"(<sdf version="1.8"><model name=")";
+  // xml += current_target_name_;
+  // xml += R"(">)";
+  // xml += "<static>true</static>";
+  // xml += "<pose>";
+  // // xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + " ";
+  // xml += "0 0 0 ";
+  // xml += "0 0 1.58</pose>";
+  // xml += R"(
+  //     <link name="plant">
+  //       <!-- Disable gravity for this object -->
+  //       <gravity>false</gravity>
+
+  //       <!-- VISUAL -->
+  //       <visual name="visual">
+  //         <geometry>
+  //           <mesh>
+  //             <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/PlantSproutOriented_millimeter.stl</uri>
+  //             <scale>2.0 2.0 2.0</scale>
+  //           </mesh>
+  //         </geometry>
+  //         <material>)";
+  // xml += "<ambient>" + color_to_string(ambient_) + "</ambient>";
+  // xml += "<diffuse>" + color_to_string(diffuse_) + "</diffuse>";
+  // xml += "<specular>" + color_to_string(specular_) + "</specular>";
+  // xml += "<emissive>" + color_to_string(emissive_) + "</emissive>";
+  // xml += "</material>";
+  // xml += "</visual>";
+
+  // xml += R"(
+  //       <!-- COLLISION (physics interaction) -->
+  //       <collision name="collision">
+  //          <geometry>
+  //           <mesh>
+  //             <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/PlantSproutOriented_millimeter.stl</uri>
+  //             <scale>2.0 2.0 2.0</scale>
+  //           </mesh>
+  //         </geometry>
+  //         <surface>
+  //           <contact>
+  //             <ode>
+  //               <min_depth>0.001</min_depth>
+  //               <max_vel>0.0</max_vel>
+  //             </ode>
+  //           </contact>
+  //         </surface>
+  //       </collision>
+
+  //       <!-- INERTIAL (mass properties) -->
+  //       <inertial>
+  //         <mass>0.1</mass>  <!-- Small mass -->
+  //         <inertia>
+  //           <ixx>0.0001</ixx>
+  //           <iyy>0.0001</iyy>
+  //           <izz>0.0001</izz>
+  //         </inertia>
+  //       </inertial>
+  //     </link>
+  //   </model>
+  // </sdf>)";
+
+  // Unknow weed (from virtual maize field)
   std::string xml;
   xml += R"(<?xml version="1.0"?>)";
   xml += R"(<sdf version="1.8"><model name=")";
   xml += current_target_name_;
   xml += R"(">)";
   xml += "<static>true</static>";
-  xml += "<pose>";
-  // xml += std::to_string(point.x) + " " + std::to_string(point.y) + " " + std::to_string(point.z) + " ";
-  xml += "0 0 0 ";
-  xml += "0 0 1.58</pose>";
+  xml += "<pose>0 0 0 0 0 0</pose>";
   xml += R"(
-      <link name="plant">
-        <!-- Disable gravity for this object -->
+      <link name="link">
         <gravity>false</gravity>
-
-        <!-- VISUAL -->
         <visual name="visual">
           <geometry>
             <mesh>
-              <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/PlantSproutOriented_millimeter.stl</uri>
-              <scale>2.0 2.0 2.0</scale>
+              <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/models/unknown_weed/meshes/unknown_weed.dae</uri>
+              <scale>1 1 1</scale>
             </mesh>
           </geometry>
-          <material>)";
-  xml += "<ambient>" + color_to_string(ambient_) + "</ambient>";
-  xml += "<diffuse>" + color_to_string(diffuse_) + "</diffuse>";
-  xml += "<specular>" + color_to_string(specular_) + "</specular>";
-  xml += "<emissive>" + color_to_string(emissive_) + "</emissive>";
-  xml += "</material>";
-  xml += "</visual>";
-
-  xml += R"(
-        <!-- COLLISION (physics interaction) -->
+        </visual>
         <collision name="collision">
-           <geometry>
+          <geometry>
             <mesh>
-              <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/meshes/PlantSproutOriented_millimeter.stl</uri>
-              <scale>2.0 2.0 2.0</scale>
+              <uri>file:///home/simone/Documenti/Uni/arm_mazzolini/install/arm_mazzolini/share/arm_mazzolini/models/unknown_weed/meshes/unknown_weed.dae</uri>
+              <scale>1 1 1</scale>
             </mesh>
           </geometry>
-          <surface>
-            <contact>
-              <ode>
-                <min_depth>0.001</min_depth>
-                <max_vel>0.0</max_vel>
-              </ode>
-            </contact>
-          </surface>
         </collision>
-
-        <!-- INERTIAL (mass properties) -->
-        <inertial>
-          <mass>0.1</mass>  <!-- Small mass -->
-          <inertia>
-            <ixx>0.0001</ixx>
-            <iyy>0.0001</iyy>
-            <izz>0.0001</izz>
-          </inertia>
-        </inertial>
       </link>
     </model>
   </sdf>)";

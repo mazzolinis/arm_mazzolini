@@ -60,7 +60,8 @@ class TargetSpawner : public rclcpp::Node
         const double angle_range = M_PI / 6;
         // adding a new area to spawn target
         const double lato = 0.2;
-        Eigen::Vector3d center = Eigen::Vector3d(-0.08, -0.78, 1.85); 
+        // Eigen::Vector3d center = Eigen::Vector3d(-0.08, -0.78, 1.27); 
+        Eigen::Vector3d center = Eigen::Vector3d(0.0, 1.35, 0.38); 
         
         // Random numbers generators
         std::mt19937 gen;

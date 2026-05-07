@@ -85,12 +85,14 @@
                 </image>
                 <clip>
                     <near>0.01</near>
-                    <far>30.0</far>
+                    <!-- <far>30.0</far> -->
+                     <far>5.0</far>
                 </clip>
                 <depth_camera>
                     <clip>
                     <near>0.1</near>
-                    <far>10.0</far>
+                    <!-- <far>10.0</far> -->
+                     <far>2.0</far>
                     </clip>
                 </depth_camera>
                 <noise>
