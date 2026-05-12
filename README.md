@@ -5,9 +5,9 @@ Per funzionare il codice ha bisogno di realsense ros, si può ottenere qui:
 https://github.com/realsenseai/realsense-ros.git
 
 Per braccio reale:
-`colcon build --symlink-install && source install/setup.bash
-export ROS_DOMAIN_ID=21
-ros2 launch arm_mazzolini weeder.launch.py use_sim_time:=false`
+`colcon build --symlink-install && source install/setup.bash`
+`export ROS_DOMAIN_ID=21`
+`ros2 launch arm_mazzolini weeder.launch.py use_sim_time:=false`
 Questo comando avvia in automatico anche il pacchetto Realsense per la D455. 
 
 Controllare in un altro terminale che l'albero di tf sia unico e non spezzato in 3:
