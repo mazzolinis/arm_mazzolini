@@ -9,7 +9,7 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
     try{
         this->declare_parameter("world_height", double());
         world_height = this->get_parameter("world_height").as_double();
-        this->declare_parameter("output_file", "/home/simone/scrivania/target_data.csv");
+        this->declare_parameter("output_file", "/home/simone/Scrivania/second_test_data.csv");
         out_file = this->get_parameter("output_file").as_string();
     }
     catch (const rclcpp::ParameterTypeException &e) {
@@ -29,35 +29,10 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
     laser_position_sub = this->create_subscription<geometry_msgs::msg::PointStamped>(
         "/lasered_position",10, std::bind(&TargetSpawner::laser_callback, this, std::placeholders::_1)
     );
-    // pose_sub = create_subscription<geometry_msgs::msg::PoseArray>(
-    //   "/model/robot/pose", 10,
-    //   std::bind(&TargetSpawner::pose_callback, this, std::placeholders::_1)
-    // );
 
     // TF
     tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
-
-    // --- Buffer 2: Ground truth from Gazebo ---
-    // need to set false to avoid automatic subscription to /tf, which would interfere with the custom subscription to /gz/poses
-    // tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
-    // tf_listener = std::make_shared<tf2_ros::TransformListener>(
-    //   *tf_buffer,
-    //   this,
-    //   false  // not listening to /tf, we will subscribe to /world instead
-    // );
-
-
-    // // Subscriber applied to tf_buffer
-    // gz_sub_ = this->create_subscription<tf2_msgs::msg::TFMessage>(
-    //   "/world/default/dynamic_pose/info",
-    //   rclcpp::SensorDataQoS(),
-    //   [this](const tf2_msgs::msg::TFMessage::SharedPtr msg) {
-    //     for (const auto & t : msg->transforms)
-    //       tf_buffer->setTransform(t, "world", false);
-    //   }
-    // );
-
 
     // Timer
     timer = rclcpp::create_timer(
@@ -68,31 +43,14 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
     );
 }
 
-// void TargetSpawner::pose_callback(const geometry_msgs::msg::PoseArray::SharedPtr msg)
-// {
-//     if (msg->poses.empty()) return;
-
-//     geometry_msgs::msg::TransformStamped tf;
-//     tf.header = msg->header;
-//     tf.transform.translation.x = msg->poses[0].position.x;
-//     tf.transform.translation.y = msg->poses[0].position.y;
-//     tf.transform.translation.z = msg->poses[0].position.z;
-//     tf.transform.rotation = msg->poses[0].orientation;
-
-//     robot_pose_ = tf2::transformToEigen(tf);
-
-//     RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000, "Received robot pose: [%.2f, %.2f, %.2f]", robot_pose_.translation().x(), robot_pose_.translation().y(), robot_pose_.translation().z());
-
-// }
-
 void TargetSpawner::timer_callback()
 {
     // Get robot pose
     geometry_msgs::msg::TransformStamped transformStamped;
 
-    // RCLCPP_INFO(this->get_logger(), "============================================================================");
-    // RCLCPP_INFO(this->get_logger(), "Spawning new target...");
-    // RCLCPP_INFO(this->get_logger(), "============================================================================");
+    RCLCPP_DEBUG(this->get_logger(), "============================================================================");
+    RCLCPP_DEBUG(this->get_logger(), "Spawning new target...");
+    RCLCPP_DEBUG(this->get_logger(), "============================================================================");
 
     // ===========================================================================================================================================
     //              TODO: fare chiarezza qui
@@ -157,23 +115,30 @@ void TargetSpawner::timer_callback()
 
 void TargetSpawner::laser_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg)
 {
-    // Eigen::Vector3d lasered_position, laser_relative_position;
-    // tf2::fromMsg(msg->point, laser_relative_position);
 
-    
-    // lasered_position = robot_pose_ * laser_relative_position;
-    
+    // =======================
+    // PARTE NUOVA CON TF
+    // =======================
+    // Eigen::Vector3d laser_position_world;
 
-    // // RCLCPP_INFO(this->get_logger(), "LASERED POSITION: [%.2f, %.2f, %.2f]", lasered_position.x(), lasered_position.y(), lasered_position.z());
-    // // RCLCPP_INFO(this->get_logger(), "REAL POSITION: [%.2f, %.2f, %.2f]", target_position.x(), target_position.y(), target_position.z());
-    // // Save instead of printing data
-    // double x = target_position.x() - lasered_position.x();
-    // double y = target_position.y() - lasered_position.y();
-    // double r = std::sqrt(x*x + y*y);
-    // std::tuple<double, double, double> data_entry(x, y, r);
+    // try {
+    //     auto laser_tf = tf_buffer->lookupTransform(
+    //         "world", "laser", tf2::TimePointZero, tf2::durationFromSec(0.1));
+    //     laser_position_world.x() = laser_tf.transform.translation.x;
+    //     laser_position_world.y() = laser_tf.transform.translation.y;
+    //     laser_position_world.z() = laser_tf.transform.translation.z;
+    // }
+    // catch (const tf2::TransformException &ex) {
+    //     RCLCPP_WARN(this->get_logger(), "world->laser non disponibile: %s", ex.what());
+    //     return;
+    // }
+
+    // std::tuple<double, double, double, double> data_entry(
+    //     target_position.x(), target_position.y(), 
+    //     laser_position_world.x(), laser_position_world.y()
+    // );
     // std::lock_guard<std::mutex> guard(buffer_mutex);
     // buffer.push_back(data_entry);
-
 
     // ===============================
     // QUESTA PARTE ERA FUNZIONANTE
@@ -181,48 +146,18 @@ void TargetSpawner::laser_callback(const geometry_msgs::msg::PointStamped::Share
     Eigen::Vector3d lasered_position;
     tf2::fromMsg(msg->point, lasered_position);
 
-    double error = std::sqrt(std::pow(target_position.x() - lasered_position.x(), 2) + std::pow(target_position.y() - lasered_position.y(), 2));
-
     // Try printing more data to see the error
-    std::tuple<double, double, double, double, double> data_entry(
+    std::tuple<double, double, double, double> data_entry(
         target_position.x(), target_position.y(), 
-        lasered_position.x(), lasered_position.y(),
-        error
+        lasered_position.x(), lasered_position.y()
     );
     std::lock_guard<std::mutex> guard(buffer_mutex);
     buffer.push_back(data_entry);
 
+
     // ===============================
-    // QUESTA PARTE È NUOVA
+    //  DO NOT REMOVE THIS PART
     // ===============================
-    // Eigen::Vector3d lasered_position;
-    // Eigen::Vector3d plant_position;
-    // // ignore message
-    // try {
-    //     // laser
-    //     auto laser_tf = tf_buffer->lookupTransform("world", "laser", tf2::TimePointZero);
-    //     Eigen::Isometry3d laser_pose = tf2::transformToEigen(laser_tf);
-    //     lasered_position = laser_pose.translation();
-
-    //     // plant
-    //     auto plant_tf = tf_buffer->lookupTransform("world", "plant", tf2::TimePointZero);
-    //     Eigen::Isometry3d plant_pose = tf2::transformToEigen(plant_tf);
-    //     plant_position = plant_pose.translation();
-    // }
-    // catch (const tf2::TransformException &ex) {
-    //     RCLCPP_ERROR(this->get_logger(), "Transform error: %s", ex.what());
-    //     return;
-    // }
-
-    // double error = 0.0; // needed to keep the same format, error will be computed offline
-    // std::tuple<double, double, double, double, double> data_entry(
-    //     plant_position.x(), plant_position.y(), 
-    //     lasered_position.x(), lasered_position.y(),
-    //     error
-    // );
-    // std::lock_guard<std::mutex> guard(buffer_mutex);
-    // buffer.push_back(data_entry);
-
     // TODO: change it to false if error is too large
     std_msgs::msg::Bool bool_msg;
     bool_msg.data = true;
@@ -252,13 +187,12 @@ TargetSpawner::~TargetSpawner()
     // file.close();
 
     // New format with more data
-    file << "target_x,target_y,lasered_x,lasered_y,error" << std::endl;
+    file << "target_x,target_y,lasered_x,lasered_y" << std::endl;
     for (const auto& entry : buffer) {
         file << std::get<0>(entry) << ","
              << std::get<1>(entry) << ","
              << std::get<2>(entry) << ","
-             << std::get<3>(entry) << ","
-             << std::get<4>(entry) << std::endl;
+             << std::get<3>(entry) << std::endl;
     }
     file.close();
 }

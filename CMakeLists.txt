@@ -58,12 +58,27 @@ set(PROJECT_DEPENDENCIES
   pi3hat_moteus_int_msgs
 )
 
+# Find ONNX Runtime (necessary for YOLO networks)
+find_path(ONNXRUNTIME_INCLUDE_DIR
+    NAMES onnxruntime_cxx_api.h
+    PATHS /opt/onnxruntime/include
+          /usr/local/include
+          /usr/include)
+
+find_library(ONNXRUNTIME_LIB
+    NAMES onnxruntime
+    PATHS /opt/onnxruntime/lib
+          /usr/local/lib
+          /usr/lib)
+
+
 # ==============================================================================
 #                                    LIBRARY
 # ==============================================================================
 
 add_library(arm_mazzolini_library   SHARED  src/arm_kinematic.cpp
                                             src/sphere_detector.cpp
+                                            src/weed_detector.cpp
 ) 
 
 ament_target_dependencies(
@@ -73,12 +88,16 @@ ament_target_dependencies(
 target_include_directories(arm_mazzolini_library PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
+  ${ONNXRUNTIME_INCLUDE_DIR}  
+)
+target_link_libraries(arm_mazzolini_library PUBLIC
+  ${ONNXRUNTIME_LIB}
 )
 ament_export_include_directories(include)
 ament_export_libraries(arm_mazzolini_library)
 
 # ==============================================================================
-#                                   ADD NODES                                   
+#                                   NODES                                   
 # ==============================================================================
 
 add_executable(kinematic_node src/kinematic_node.cpp)
@@ -87,6 +106,7 @@ add_executable(rviz_target_visualizer src/rviz_target_visualizer.cpp)
 add_executable(target_spawner src/target_spawner.cpp)
 add_executable(camera_info_publisher src/camera_info_publisher.cpp)
 add_executable(weeder_controller src/weeder_controller.cpp)
+add_executable(weeder_controller_with_YOLO src/weeder_controller_with_YOLO.cpp)
 add_executable(real_arm_test_node src/real_arm_test_node.cpp)
 
 
@@ -111,6 +131,7 @@ ament_target_dependencies(
   ${PROJECT_DEPENDENCIES}
 )
 target_link_libraries(weeder_controller PUBLIC arm_mazzolini_library)
+target_link_libraries(weeder_controller_with_YOLO PUBLIC arm_mazzolini_library)
 
 ament_target_dependencies(
   real_arm_test_node PUBLIC
@@ -138,6 +159,10 @@ target_include_directories(camera_info_publisher PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 target_include_directories(weeder_controller PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+target_include_directories(weeder_controller_with_YOLO PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
@@ -173,16 +198,22 @@ install(TARGETS camera_info_publisher
 install(TARGETS weeder_controller
   DESTINATION lib/${PROJECT_NAME}
 )
+install(TARGETS weeder_controller_with_YOLO
+  DESTINATION lib/${PROJECT_NAME}
+)
 install(TARGETS real_arm_test_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
-# Python spawner node
+# ============================================================================== #
+#                            PYTHON NODES
+# ============================================================================== #
 
 ament_python_install_package(${PROJECT_NAME})
 
 install(PROGRAMS
   arm_mazzolini/simulation_process_spawner.py
+  arm_mazzolini/ground_truth_tf_publisher.py
   arm_mazzolini/video_recorder.py
   DESTINATION lib/${PROJECT_NAME}
 )

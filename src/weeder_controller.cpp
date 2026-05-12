@@ -22,19 +22,19 @@ namespace arm_mazzolini
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), rgb_sub_, depth_sub_, info_sub_);
         sync_->registerCallback(std::bind(&WeederController::image_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
-        if (use_real_hw) {
+        if (!use_sim_time) {
             // Joint states subscription
             states_subscription_ = this->create_subscription<pi3hat_moteus_int_msgs::msg::JointsStates>(
                 "state_broadcaster/joints_state",
                 10,
                 std::bind(&WeederController::real_states_callback, this, std::placeholders::_1)
-            );  
+            );
 
             // Command publisher
             command_publisher_ = this->create_publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>("joint_controller/command", 10);
 
         }
-        if (use_sim_time) {
+        else {
 
             // Joint states subscription
             joint_state_sub = this->create_subscription<sensor_msgs::msg::JointState>(
@@ -56,13 +56,6 @@ namespace arm_mazzolini
             goal_options.result_callback = std::bind(&WeederController::result_callback, this, std::placeholders::_1);
             goal_msg.trajectory.joint_names = joint_names;
 
-        }
-        else if (!use_sim_time && !use_real_hw) {
-            RCLCPP_ERROR(this->get_logger(), "==============================================================");
-            RCLCPP_ERROR(this->get_logger(), "INVALID CONFIGURATION: AT LEAST ONE OF 'use_sim_time' OR 'use_real_hw' MUST BE TRUE");
-            RCLCPP_ERROR(this->get_logger(), "==============================================================");
-            RCLCPP_ERROR(this->get_logger(), "Shutting down...");
-            rclcpp::shutdown();
         }
 
         // TF2 listener
@@ -119,12 +112,9 @@ namespace arm_mazzolini
             this->declare_parameter("visual_servoing.smoothing", double());
             this->declare_parameter("visual_servoing.control_threshold", 0.005);
             this->declare_parameter("visual_servoing.desired_feature", std::vector<double>());
-            // this->declare_parameter("use_sim_time", true);
-            this->declare_parameter("use_real_hw", false);
 
-            // First get simulation and hardware flags
+            // First get simulation flag (use_sim_time is declared by rclcpp::Node)
             use_sim_time = this->get_parameter("use_sim_time").as_bool();
-            use_real_hw = this->get_parameter("use_real_hw").as_bool();
 
             // Arm lengths
             l1 = this->get_parameter("link1_length").as_double();
@@ -414,20 +404,27 @@ namespace arm_mazzolini
     
     void WeederController::pose_timer_callback()
     {
-        // check if transform is available
-        if (!tf_buffer->canTransform("odom", "base_link", tf2::TimePointZero)) {
-            RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Transform odom->base_link not available yet");
-            pose_timer->reset(); 
-            return;
+        if (use_sim_time){
+
+            // check if transform is available
+            if (!tf_buffer->canTransform("odom", "base_link", tf2::TimePointZero)) {
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Transform odom->base_link not available yet");
+                pose_timer->reset(); 
+                return;
+            }
+            
+            try {
+                geometry_msgs::msg::TransformStamped pose_message = 
+                tf_buffer->lookupTransform("odom", "base_link", tf2::TimePointZero);
+                pose_callback(pose_message);
+            }
+            catch (tf2::TransformException &ex) {
+                RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Could not transform odom to base_link: %s", ex.what());
+                return;
+            }
         }
-        
-        try {
-            geometry_msgs::msg::TransformStamped pose_message = 
-            tf_buffer->lookupTransform("odom", "base_link", tf2::TimePointZero);
-            pose_callback(pose_message);
-        }
-        catch (tf2::TransformException &ex) {
-            RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Could not transform odom to base_link: %s", ex.what());
+        else {
+            // Check how to see movement in real hardware
             return;
         }
     }
@@ -554,7 +551,7 @@ namespace arm_mazzolini
 
             joints_client->async_send_goal(goal_msg, goal_options);
         }
-        if (use_real_hw) {
+        else {
             pi3hat_moteus_int_msgs::msg::JointsCommand command_msg;
             command_msg.name = joint_names;
             command_msg.position = joint_angles;
@@ -798,20 +795,28 @@ namespace arm_mazzolini
             }
 
             geometry_msgs::msg::PointStamped lasered_position;
-            try {
-                // TODO: remove odom and use global fixed frame
-                geometry_msgs::msg::TransformStamped arm_pose = tf_buffer->lookupTransform("odom", "kinematic_link", tf2::TimePointZero);
-                Eigen::Isometry3d kinematic_to_base = tf2::transformToEigen(arm_pose);
-                Eigen::Vector3d absolute_position = kinematic_to_base * target_position;
-                lasered_position.point = tf2::toMsg(absolute_position);
-                lasered_position.header.stamp = this->now();
-                lasered_position.header.frame_id = "odom";
-                laser_pub->publish(lasered_position);
+            if (use_sim_time) {
+                try {
+                    // TODO: remove odom and use global fixed frame
+                    geometry_msgs::msg::TransformStamped arm_pose = tf_buffer->lookupTransform("odom", "kinematic_link", tf2::TimePointZero);
+                    Eigen::Isometry3d kinematic_to_base = tf2::transformToEigen(arm_pose);
+                    Eigen::Vector3d absolute_position = kinematic_to_base * target_position;
+                    lasered_position.point = tf2::toMsg(absolute_position);
+                    lasered_position.header.stamp = this->now();
+                    lasered_position.header.frame_id = "odom";
+                    laser_pub->publish(lasered_position);
 
+                }
+                catch (tf2::TransformException &ex) {
+                    RCLCPP_WARN(this->get_logger(), "Could not transform odom to kinematic_link: %s", ex.what());
+                }    
             }
-            catch (tf2::TransformException &ex) {
-                RCLCPP_WARN(this->get_logger(), "Could not transform odom to kinematic_link: %s", ex.what());
-            }                     
+            else {
+                lasered_position.point = tf2::toMsg(target_position);
+                lasered_position.header.stamp = this->now();
+                lasered_position.header.frame_id = "map";
+                laser_pub->publish(lasered_position);
+            }                 
 
             controller_status = ControllerStatus::NO_TARGET;
             keyboard_thread_active_ = false;

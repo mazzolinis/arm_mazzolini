@@ -1,0 +1,297 @@
+<?xml version="1.0"?>
+<robot name="weeder_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:property name="PI" value="3.141592" />
+
+    <!-- Arm Parameters -->
+    <xacro:property name="PI" value="3.141592" />
+    <xacro:property name="base_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Arm_base.stl"/>
+    <xacro:property name="link1_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Braccio_intermedio.stl"/>
+    <xacro:property name="link2_heavy_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Assieme_ee_heavy_partial.stl"/>
+    <xacro:property name="link2_light_mesh" value="file://$(find arm_mazzolini)/meshes/stl/Assieme_ee_light_partial.stl"/>
+    <xacro:property name="ee_light_mesh" value="file://$(find arm_mazzolini)/meshes/stl/ee_laser_light.stl"/>
+    <xacro:property name="ee_heavy_mesh" value="file://$(find arm_mazzolini)/meshes/stl/ee_laser_heavy.stl"/>
+    <!-- <xacro:property name="camera_mesh" value="file://$(find arm_mazzolini)/meshes/stl/D435.stl"/> -->
+    <xacro:property name="h0" value="0.07"/>
+    <xacro:property name="l0" value="0.190"/>
+    <xacro:property name="h1" value="0.0"/>
+    <xacro:property name="l1" value="0.190"/>
+    <xacro:property name="h2" value="0.03"/>
+    <xacro:property name="l2" value="0.250"/> 
+    <xacro:property name="scale" value="1e-3 1e-3 1e-3"/>
+    <xacro:property name="no_scale" value="1.0 1.0 1.0"/>
+
+    <!-- Camera parameters -->
+    <xacro:property name="PI" value="3.141592" />
+    <xacro:property name="baseline" value="0.05" />
+    <xacro:property name="width" value="1280" />
+    <xacro:property name="height" value="720" />
+    <xacro:property name="fps" value="30" />
+    <xacro:property name="hfov" value="${PI/3}" />
+    <xacro:property name="name_prefix" value="/simulated_D435" />
+    <xacro:property name="l_camera" value="0.06185"/>
+    <xacro:property name="h_camera" value="0.0083"/>
+    
+    <!-- Parameters  -->
+    <xacro:arg name= "is_light" default="true"/>
+    <xacro:arg name= "weeder_controller" default=" "/> <!-- Useless parameter but better with than without -->
+
+    <xacro:macro name="weeder_robot" params="is_light weeder_controller">
+
+        <!-- ========================= LINKS ========================= -->
+
+        <link name="base_link">
+        </link>
+
+        <link name="arm_base_link">
+            <visual>
+                <geometry>
+                    <mesh filename="${base_mesh}" scale="${scale}"/>
+                </geometry>
+                <material name="grey">
+                    <color rgba="0.6 0.6 0.6 1"/>
+                </material>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${base_mesh}" scale="${scale}"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <origin xyz="0 0 0" rpy="0 0 0"/>
+                <mass value="2.074"/>
+            <inertia ixx="0.006004333"  ixy="0.0"           ixz="-0.000283467"
+                                        iyy="0.00628431"    iyz="0.0"
+                                                            izz="0.010101581"
+                />
+            </inertial>
+        </link>
+
+        <link name="kinematic_link">
+        </link>
+
+        <!-- Link 1, intermediate link -->
+        <link name="link1">
+            <visual>
+                <geometry>
+                    <mesh filename="${link1_mesh}" scale="${scale}"/>
+                </geometry>
+                <material name="grey">
+                    <color rgba="0.6 0.6 0.6 1"/>
+                </material>
+            </visual>
+            <collision>
+                <geometry>
+                    <mesh filename="${link1_mesh}" scale="${scale}"/>
+                </geometry>
+            </collision>
+            <inertial>
+                <origin xyz="${l1/2} 0 ${h1/2}" rpy="0 0 0"/>
+                <mass value="0.220"/>
+            <inertia ixx="0.000143696"  ixy="0.0"           ixz="0.000134444"
+                                        iyy="0.001669532"   iyz="0.0"
+                                                            izz="0.001645390"
+                />
+            </inertial>
+        </link>
+
+        <!-- Link 2 with Futonics head -->
+        <xacro:unless value="${is_light}">
+            <link name="link2_heavy">
+                <visual>
+                    <geometry>
+                        <mesh filename="${link2_heavy_mesh}" scale="${no_scale}"/>
+                    </geometry>
+                    <material name="grey">
+                        <color rgba="0.6 0.6 0.6 1"/>
+                    </material>
+                </visual>
+                <collision>
+                    <geometry>
+                        <mesh filename="${link2_heavy_mesh}" scale="${no_scale}"/>
+                    </geometry>
+                </collision>
+                <inertial>
+                    <origin xyz="0.1153 0 0.0235"  rpy="0 0 0"/>
+                    <mass value="0.845"/>
+                    <inertia ixx="0.000709911"  ixy="0.0"           ixz="0.00002662"
+                                                iyy="0.006001619"   iyz="0.0"
+                                                                    izz="0.006511388"
+                    />
+                </inertial>
+            </link>
+            <link name="end_effector">
+                <visual>
+                    <geometry>
+                        <mesh filename="${ee_heavy_mesh}" scale="${no_scale}"/>
+                    </geometry>
+                    <material name="black">
+                        <color rgba="0.1 0.1 0.1 1"/>
+                    </material>
+                </visual>
+                <collision>
+                    <geometry>
+                        <mesh filename="${ee_heavy_mesh}" scale="${no_scale}"/>
+                    </geometry>
+                </collision>
+                <inertial>
+                    <origin xyz="0 0 0.108" rpy="0 0 0"/>
+                    <mass value="1.549"/>
+                    <inertia ixx="0.005320713"  ixy="0.0"           ixz="0.0"
+                                                iyy="0.005320713"   iyz="0.0"
+                                                                    izz="0.001627615"
+                    />
+                </inertial>
+            </link>
+            <joint name="end_effector_joint" type="fixed">
+                <parent link="link2_heavy"/>
+                <child link="end_effector"/>
+                <origin xyz="${l2} 0 -${h2}" rpy="0 0 0"/>
+            </joint>
+        </xacro:unless>
+
+        <!-- Link 2 with IPG head -->
+        <xacro:if value="${is_light}">
+            <link name="link2_light">
+                <visual>
+                    <geometry>
+                        <mesh filename="${link2_light_mesh}" scale="${no_scale}"/>
+                    </geometry>
+                    <material name="grey">
+                        <color rgba="0.6 0.6 0.6 1"/>
+                    </material>
+                </visual>
+                <collision>
+                    <geometry>
+                        <mesh filename="${link2_light_mesh}" scale="${no_scale}"/>
+                    </geometry>
+                </collision>
+                <inertial>
+                    <origin xyz="0.0888 0 0.0243" rpy="0 0 0"/>
+                    <mass value="0.704"/>
+                    <inertia ixx="0.000401870"  ixy="0.0"           ixz="-0.000064005"
+                                                iyy="0.002700823"   iyz="0.0"
+                                                                    izz="0.002965740"
+                    />
+                </inertial>
+            </link>
+            <link name="end_effector">
+                <visual>
+                    <geometry>
+                        <mesh filename="${ee_light_mesh}" scale="${no_scale}"/>
+                    </geometry>
+                    <material name="black">
+                        <color rgba="0.1 0.1 0.1 1"/>
+                    </material>
+                </visual>
+                <collision>
+                    <geometry>
+                        <mesh filename="${ee_light_mesh}" scale="${no_scale}"/>
+                    </geometry>
+                </collision>
+                <inertial>
+                    <origin xyz="0 0 0.0686" rpy="0 0 0"/>
+                    <mass value="0.096"/>
+                    <inertia ixx="0.0001466"    ixy="0.0"       ixz="0.0"
+                                                iyy="0.0001466" iyz="0.0"
+                                                                izz="0.0000102"
+                    />
+                </inertial>
+            </link>
+            <joint name="end_effector_joint" type="fixed">
+                <parent link="link2_light"/>
+                <child link="end_effector"/>
+                <origin xyz="${l2} 0 -0.037" rpy="0 0 0"/>
+            </joint>
+        </xacro:if>
+
+        <!-- Laser -->
+         <!-- Do not remove laser link, remove visual if needed -->
+        <link name="laser">
+            <visual>
+                <origin xyz="0 0 -0.5" rpy="0 0 0"/>
+                <geometry>
+                    <cylinder radius="0.002" length="1.0"/>
+                </geometry>
+                <material name="red">
+                    <color rgba="0.9 0 0 1"/>
+                </material>
+            </visual>
+        </link>
+
+        <!-- Camera part  -->
+        <link name="camera_kinematic"/>
+        <link name="camera_optical_frame"/>
+
+        <!-- ========================= JOINTS ========================= -->
+        <!-- Fixed joint connecting base_link and arm_base_link -->
+        <joint name="base_to_arm_joint" type="fixed">
+            <parent link="base_link"/>
+            <child link="arm_base_link"/>
+            <origin xyz="0 -0.3 0.235" rpy="0 0 -${PI/2}"/>
+        </joint>
+
+        <joint name="fixed_for_kinematic" type="fixed">
+            <parent link="arm_base_link"/>
+            <child link="kinematic_link"/>
+            <origin xyz="${l0} 0 ${h0}" rpy="0 0 0"/>
+        </joint>
+
+        <!-- Joint 1 (Revolute) -->
+        <joint name="joint1" type="revolute">
+            <parent link="arm_base_link"/>
+            <child link="link1"/>
+            <origin xyz="${l0} 0 ${h0}" rpy="0 0 0"/>
+            <!-- <origin xyz="0 0 ${h0}" rpy="0 0 0"/> -->
+            <axis xyz="0 0 1"/>
+            <limit effort="1000" lower="-${PI}" upper="${PI}" velocity="100"/>
+        </joint>
+
+        <!-- Joint 2 (Revolute) -->
+        <joint name="joint2" type="revolute">
+            <parent link="link1"/>
+            <xacro:unless value="${is_light}">
+                <child link="link2_heavy"/>
+            </xacro:unless>
+            <xacro:if value="${is_light}">
+                <child link="link2_light"/>
+            </xacro:if>
+            <origin xyz="${l1} 0 ${h1}" rpy="0 0 0"/>
+            <axis xyz="0 0 1"/>
+            <limit effort="1000" lower="-${PI}" upper="${PI}" velocity="100"/>
+        </joint>
+
+        <joint name="laser_joint" type="fixed">
+            <xacro:if value="${is_light}">
+                <parent link="link2_light"/>
+            </xacro:if>
+            <xacro:unless value="${is_light}">
+                <parent link="link2_heavy"/>
+            </xacro:unless>
+            <child link="laser"/>
+            <origin xyz="${l2} 0 ${h2}" rpy="0 0 0"/>
+        </joint>
+
+        <joint name="camera_joint" type="fixed">
+            <xacro:unless value="${is_light}">
+                <parent link="link2_heavy"/>
+            </xacro:unless>
+            <xacro:if value="${is_light}">
+                <parent link="link2_light"/>
+            </xacro:if>
+            <child link="camera_kinematic"/>
+            <origin xyz="${l_camera} 0 ${h_camera}" rpy="${PI+PI/10} 0 ${-PI/2}"/>
+        </joint>
+      
+        <joint name="camera_optical_joint" type="fixed">
+            <parent link="camera_kinematic"/>
+            <child link="camera_optical_frame"/>
+            <origin xyz="0 0 0.07" rpy="0 0 0"/>
+        </joint>
+
+    </xacro:macro>
+
+
+    <xacro:weeder_robot is_light="$(arg is_light)" weeder_controller="$(arg weeder_controller)"/>
+
+</robot>

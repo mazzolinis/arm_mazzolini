@@ -37,7 +37,6 @@ namespace arm_mazzolini
 
         // Parameters
         bool use_sim_time;
-        bool use_real_hw;
 
         // Parameters from yaml
         double l1;

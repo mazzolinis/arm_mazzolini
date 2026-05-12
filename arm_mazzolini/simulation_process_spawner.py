@@ -166,8 +166,6 @@ class SimulationProcessSpawner(Node):
     # =====================================================
     def get_params(self):
 
-        self.declare_parameter('use_real_hw', False)
-        self.use_real_hw = self.get_parameter('use_real_hw').get_parameter_value().bool_value
         self.declare_parameter('controller_yaml', ' ')
         self.controller_yaml = self.get_parameter('controller_yaml').get_parameter_value().string_value
         self.get_logger().debug(f'Using controller YAML: {self.controller_yaml}')
@@ -225,18 +223,6 @@ class SimulationProcessSpawner(Node):
             )
         )
 
-        #  kinematic node (disabilitato se si usa la camera)
-        # targets.append(
-        #     SpawnTarget(
-        #         name='kinematic_node',
-        #         package='arm_mazzolini',
-        #         executable='kinematic_node',
-        #         extra_args=[],
-        #         params_file=self.controller_yaml,
-        #         delay=1.0
-        #     )
-        # )
-
         # target spawner
         targets.append(
             SpawnTarget(
@@ -257,7 +243,6 @@ class SimulationProcessSpawner(Node):
                 extra_args=[],
                 log_level='INFO',
                 params_file=self.parameters_yaml,
-                inline_params={'use_real_hw': self.use_real_hw},
                 delay=1.0,
                 interactive=True
             )

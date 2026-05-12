@@ -31,7 +31,7 @@ class TargetSpawner : public rclcpp::Node
         std::string out_file;
         std::mutex buffer_mutex;
         // std::vector<std::tuple<double, double, double>> buffer;
-        std::vector<std::tuple<double, double, double, double, double>> buffer;
+        std::vector<std::tuple<double, double, double, double>> buffer;
         
         // Publisher
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr target_pub;
@@ -61,7 +61,7 @@ class TargetSpawner : public rclcpp::Node
         // adding a new area to spawn target
         const double lato = 0.2;
         // Eigen::Vector3d center = Eigen::Vector3d(-0.08, -0.78, 1.27); 
-        Eigen::Vector3d center = Eigen::Vector3d(0.0, 1.35, 0.38); 
+        Eigen::Vector3d center = Eigen::Vector3d(0.0, 1.35, 0.35); 
         
         // Random numbers generators
         std::mt19937 gen;

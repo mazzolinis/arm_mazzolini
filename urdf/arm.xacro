@@ -181,8 +181,10 @@
         </xacro:if>
 
         <!-- Laser -->
-        <!-- <link name="laser">
+         <!-- Do not remove laser link, remove visual if needed -->
+        <link name="laser">
             <visual>
+                <origin xyz="0 0 -0.5" rpy="0 0 0"/>
                 <geometry>
                     <cylinder radius="0.002" length="1.0"/>
                 </geometry>
@@ -200,8 +202,8 @@
                 <parent link="link2_heavy"/>
             </xacro:unless>
             <child link="laser"/>
-            <origin xyz="${l2} 0 ${h2-0.5}" rpy="0 0 0"/>
-        </joint> -->
+            <origin xyz="${l2} 0 ${h2}" rpy="0 0 0"/>
+        </joint>
 
         <link name="kinematic_link">
         </link>

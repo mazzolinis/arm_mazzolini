@@ -1,0 +1,88 @@
+
+<?xml version="1.0" ?>
+<robot name="softleg" xmlns:xacro="http://ros.org/wiki/xacro">
+
+    <!--
+        SoftLeg hardware interface xacro.
+
+        The cart joint is passive (spring/gravity driven) — no Moteus motor.
+        Only the hip (HFE) and knee (KFE) joints are actuated.
+
+        TODO: fill in the correct CAN IDs and Pi3Hat bus numbers before deploying.
+        To discover motor IDs:  moteus_tool --info  (run on the Pi with motors connected)
+    -->
+
+    <xacro:macro name="joint" params="name id bus kp kd second_encoder_source max_pos_limit min_pos_limit actuator_trasmission">
+        <joint name="${name}">
+            <param name="id">${id}</param>
+            <param name="bus">${bus}</param>
+            <param name="second_encoder_source">${second_encoder_source}</param>
+            <param name="type">motor</param>
+
+            <param name="KP">${kp}</param>
+            <param name="KD">${kd}</param>
+            <param name="KI">0.0</param>
+            <param name="ilimit">0.0</param>
+            <param name="iratelimit">0.0</param>
+            <param name="max_position_slip">0.0</param>
+            <param name="max_velocity_slip">0.0</param>
+            <param name="enable_motor_temperature">0</param>
+            <param name="max_pos_limit">${max_pos_limit}</param>
+            <param name="min_pos_limit">${min_pos_limit}</param>
+            <param name="max_velocity">10.0</param>
+            <param name="max_effort">15.0</param>
+            <param name="actuator_trasmission">${actuator_trasmission}</param>
+            <param name="position_offset">0</param>
+            <param name="second_encoder_trasmission">3.23076923</param>
+
+            <param name="position_res">64</param>
+            <param name="velocity_res">64</param>
+            <param name="torque_res">64</param>
+            <param name="q_current_res">8</param>
+            <param name="d_current_res">0</param>
+            <param name="abs_position_res">0</param>
+            <param name="power_res">8</param>
+            <param name="motor_temperature_res">0</param>
+            <param name="voltage_res">16</param>
+            <param name="temperature_res">8</param>
+            <param name="position_error_res">64</param>
+            <param name="velocity_error_res">64</param>
+            <param name="torque_error_res">64</param>
+            <param name="second_encoder_position_res">64</param>
+            <param name="second_encoder_velocity_res">64</param>
+        </joint>
+    </xacro:macro>
+
+    <!-- Leg joint: position-controlled, same gains/transmission as omniquad leg joints -->
+    <xacro:macro name="leg_joint" params="name id bus">
+        <xacro:joint name="${name}" id="${id}" bus="${bus}"
+                     kp="100.0" kd="1.0"
+                     second_encoder_source="-1"
+                     max_pos_limit="3.14" min_pos_limit="-3.14"
+                     actuator_trasmission="9"/>
+    </xacro:macro>
+
+    <ros2_control name="MoteusPi3Hat_Interface" type="system">
+        <hardware>
+            <plugin>pi3hat_hw_interface/MoteusPi3Hat_Interface</plugin>
+            <param name="timeout_ns">0</param>
+            <param name="min_tx_wait_ns">20000</param>
+            <param name="rx_baseline_wait_ns">200000</param>
+            <param name="rx_extra_wait_ns">20000</param>
+            <param name="CPU_affinity">1</param>
+
+            <param name="request_attitude">1</param>
+
+            <param name="mounting_deg_roll">0</param>
+            <param name="mounting_deg_pitch">0</param>
+            <param name="mounting_deg_yaw">0</param>
+
+            <param name="attitude_hz">400</param>
+        </hardware>
+
+        <!-- TODO: replace id and bus with the actual values from moteus_tool --info -->
+        <xacro:leg_joint name="HFE" id="1" bus="1"/>
+        <xacro:leg_joint name="KFE" id="2" bus="1"/>
+
+    </ros2_control>
+</robot>

@@ -22,13 +22,6 @@ def generate_launch_description():
     )
     declared_arguments.append(
         DeclareLaunchArgument(
-            "use_real_hw",
-            default_value="false",
-            description="Use real arm if true",
-        )
-    )
-    declared_arguments.append(
-        DeclareLaunchArgument(
             "height",
             default_value="0.4",
             description="Height to spawn the robot at",
@@ -55,22 +48,13 @@ def generate_launch_description():
             description="Set to false to disable RViz",
         )
     )
-    declared_arguments.append(
-        DeclareLaunchArgument(
-            "use_camera",
-            default_value="true",
-            description="Set true to use simulated camera",
-    )
-    )
 
     # Initialize Arguments
     use_sim_time = LaunchConfiguration("use_sim_time")
-    use_real_hw = LaunchConfiguration("use_real_hw")
     height = LaunchConfiguration("height")
     world_height = LaunchConfiguration("world_height")
     is_light = LaunchConfiguration("is_light")
     use_rviz = LaunchConfiguration("use_rviz")
-    use_camera = LaunchConfiguration("use_camera")
 
     # Other parameters (this can be set only from launch file)
     pkg_share = FindPackageShare("arm_mazzolini")
@@ -86,25 +70,27 @@ def generate_launch_description():
     output_file = PathJoinSubstitution(["/home", "simone", "Scrivania", "first_test_data.csv"])
 
     # Path to robot description file (xacro)
+    robot = PythonExpression([
+        "'weeder_robot.xacro' if '", use_sim_time, "' == 'true' else 'weeder_robot_real.xacro'" 
+    ])
     robot_description_content = Command(
         [
             PathJoinSubstitution([FindExecutable(name="xacro")]),
             " ",
             PathJoinSubstitution(
-                [pkg_share, "urdf", "weeder_robot.xacro"]
+                [pkg_share, "urdf", robot]
             ),
             " ",
             "is_light:=", is_light,
             " ",
-            "use_camera:=", use_camera,
-            " ",
             "controller_yaml:=", controller_config_file,
-            " ",
-            "use_sim_time:=", use_sim_time
         ]
     )
 
-    # Launch Gazebo
+    # =========================================
+    # Gazebo or real camera launch
+    # =========================================
+
     gz_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             PathJoinSubstitution(
@@ -128,7 +114,26 @@ def generate_launch_description():
     # ))
     gazebo.append(gz_launch)
 
-    # Nodes
+    real_camera_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [FindPackageShare("realsense2_camera"), "launch", "rs_launch.py"]
+            )
+        ),
+        launch_arguments={
+            "enable_sync": "true",
+            "align_depth.enable": "true",
+            "camera_namespace" : "weeder_robot",
+            "camera_name" : "real_D455",
+        }.items(),
+        condition = UnlessCondition(use_sim_time),
+    )
+    gazebo.append(real_camera_launch)
+
+    # =========================================
+    #                 NODES
+    # =========================================
+
     nodes = []
 
     robot_state_publisher = Node(
@@ -184,24 +189,6 @@ def generate_launch_description():
     )
     nodes.append(rviz_node)
 
-    # gz_bridge=Node(
-    #     package='ros_gz_bridge',
-    #     executable='parameter_bridge',
-    #     arguments=[
-    #     '/clock@rosgraph_msgs/msg/Clock[ignition.msgs.Clock',
-    #     '/world/default/create@ros_gz_interfaces/srv/SpawnEntity',
-    #     '/world/default/remove@ros_gz_interfaces/srv/DeleteEntity',
-    #     # '/simulated_D435/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo', # Should I use it?
-    #     '/simulated_D435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
-    #     '/simulated_D435/image@sensor_msgs/msg/Image[gz.msgs.Image',
-    #     # '/model/weeder_robot/pose@geometry_msgs/msg/Pose[gz.msgs.Pose',
-    #     '/world/default/dynamic_pose/info@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
-    #     ],
-    #     condition=IfCondition(use_sim_time),
-    #     output='screen'
-    # )
-    # nodes.append(gz_bridge)
-
     gz_bridge=Node(
         package='ros_gz_bridge',
         executable='parameter_bridge',
@@ -212,13 +199,26 @@ def generate_launch_description():
         # '/simulated_D435/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo', # Should I use it?
         '/simulated_D435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
         '/simulated_D435/image@sensor_msgs/msg/Image[gz.msgs.Image',
-        # '/model/weeder_robot/pose@geometry_msgs/msg/Pose[gz.msgs.Pose',
-        '/world/agricultural_world/dynamic_pose/info@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
+        '/model/weeder_robot/pose@tf2_msgs/msg/TFMessage[ignition.msgs.Pose_V',
         ],
         condition=IfCondition(use_sim_time),
         output='screen'
     )
     nodes.append(gz_bridge)
+
+    ground_truth_tf_publisher = Node(
+        package='arm_mazzolini',
+        executable='ground_truth_tf_publisher.py',
+        name='ground_truth_tf_publisher',
+        parameters=[
+            {'use_sim_time': use_sim_time},
+            {'gz_model_name': 'weeder_robot'},
+            {'odom_topic': '/diff_drive_controller/odom'},
+        ],
+        output='screen',
+        condition=IfCondition(use_sim_time),
+    )
+    nodes.append(ground_truth_tf_publisher)
 
 
     gazebo_target_visualizer = Node(
@@ -252,13 +252,33 @@ def generate_launch_description():
             'parameters_yaml': parameters_file,
             'world_height': world_height,
             'use_sim_time': use_sim_time,
-            'use_real_hw': use_real_hw,
             'output_file': output_file,
         }],
         condition = IfCondition(use_sim_time), # This node works only in simulation
         output='screen',
     )
     nodes.append(simulation_spawner)
+
+    weeder_controller = Node(
+        package="arm_mazzolini",
+        executable="weeder_controller",
+        name="weeder_controller",
+        parameters=[
+            {"use_sim_time": use_sim_time},
+                    parameters_file],
+        condition = UnlessCondition(use_sim_time)
+    )
+    nodes.append(weeder_controller)
+
+    camera_tf_publisher = Node(
+        package="tf2_ros",
+        executable="static_transform_publisher",
+        name="camera_optical_to_realsense_tf",
+        arguments=["0", "0", "0", "0", "0", "0",
+                   "camera_optical_frame", "real_D455_link"],
+        condition=UnlessCondition(use_sim_time),
+    )
+    nodes.append(camera_tf_publisher)
 
     camera_info_publisher = Node(
         package="arm_mazzolini",
@@ -271,9 +291,7 @@ def generate_launch_description():
             {"camera_info_topic": "/simulated_D435/camera_info"},
             {"use_sim_time": use_sim_time},
         ],
-        condition = IfCondition(
-            PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
-        ),
+        condition = IfCondition(use_sim_time)
     )
     nodes.append(camera_info_publisher)
 
@@ -287,9 +305,7 @@ def generate_launch_description():
             ("camera_info", "/simulated_D435/camera_info"), # TODO: change names to parameters, less space for error
         ],
         parameters=[{"use_sim_time": use_sim_time}],
-        condition = IfCondition(
-            PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
-        )
+        condition = IfCondition(use_sim_time)
     )
     nodes.append(rgb_rectify)
 
@@ -303,9 +319,7 @@ def generate_launch_description():
     #         ("camera_info", "/simulated_D435/camera_info"),
     #     ],
     #     parameters=[{"use_sim_time": use_sim_time}],
-    #     condition = IfCondition(
-    #         PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
-    #     )
+    #     condition = IfCondition(use_sim_time)
     # )
     # nodes.append(depth_rectify)
 
@@ -322,23 +336,8 @@ def generate_launch_description():
     #         ("points", "/simulated_D435/points"),
     #     ],
     #     parameters=[{"use_sim_time": use_sim_time}],
-    #     condition = IfCondition(
-    #         PythonExpression(["'", use_sim_time, "' == 'true' and '", use_camera, "' == 'true'"])
-    #     )
+    #     condition = IfCondition(use_sim_time)
     # )
     # nodes.append(point_cloud_node)
-
-    weeder_controller = Node(
-        package="arm_mazzolini",
-        executable="weeder_controller",
-        name="weeder_controller",
-        parameters=[
-            {"use_sim_time": use_sim_time},
-            {"use_real_hw": use_real_hw},
-                    controller_config_file],
-        condition = UnlessCondition(use_sim_time)
-    )
-    nodes.append(weeder_controller)
-
 
     return LaunchDescription(declared_arguments + gazebo + nodes)
