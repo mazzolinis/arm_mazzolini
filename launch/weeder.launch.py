@@ -1,5 +1,5 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument,IncludeLaunchDescription, RegisterEventHandler, TimerAction, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument,IncludeLaunchDescription, RegisterEventHandler, TimerAction, ExecuteProcess
 from launch.conditions import IfCondition,UnlessCondition
 from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -269,6 +269,28 @@ def generate_launch_description():
         condition = UnlessCondition(use_sim_time)
     )
     nodes.append(weeder_controller)
+
+    nuc_heartbeat_node = Node(
+        package="arm_mazzolini",
+        executable="nuc_heartbeat_node",
+        name="nuc_heartbeat_node",
+        condition=UnlessCondition(use_sim_time)
+    )
+    nodes.append(nuc_heartbeat_node)
+
+    joints_state_republisher = Node(
+        package="arm_mazzolini",
+        executable="joints_state_republisher_node",
+        name="joints_state_republisher_node",
+        output="screen",
+        parameters=[
+            {"input_topic": "/omni_controller/joints_state"},
+            {"output_topic": "/joint_states"},
+            {"use_input_stamp": True}
+        ],
+    )
+    nodes.append(joints_state_republisher)
+
 
     camera_tf_publisher = Node(
         package="tf2_ros",

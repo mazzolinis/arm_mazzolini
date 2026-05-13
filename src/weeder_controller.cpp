@@ -25,13 +25,13 @@ namespace arm_mazzolini
         if (!use_sim_time) {
             // Joint states subscription
             states_subscription_ = this->create_subscription<pi3hat_moteus_int_msgs::msg::JointsStates>(
-                "state_broadcaster/joints_state",
+                real_joints_states_topic,
                 10,
                 std::bind(&WeederController::real_states_callback, this, std::placeholders::_1)
             );
 
             // Command publisher
-            command_publisher_ = this->create_publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>("joint_controller/command", 10);
+            command_publisher_ = this->create_publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>(real_joints_command_topic, 10);
 
         }
         else {

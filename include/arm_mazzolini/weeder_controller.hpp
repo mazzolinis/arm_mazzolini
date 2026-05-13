@@ -83,8 +83,9 @@ namespace arm_mazzolini
         std::vector<double> joint_states = initial_joint_values;
         std::vector<double> last_joint_angles;
         const double joint_tolerance = 2e-4; // radians
+        std::string real_joints_states_topic = "/omni_controller/joints_state";
+        std::string real_joints_command_topic = "/omni_controller/joints_reference";
     
-
         // Timers
         rclcpp::TimerBase::SharedPtr pose_timer;
         rclcpp::TimerBase::SharedPtr control_timer;

@@ -33,6 +33,8 @@ private:
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Time start_time_;
     double publish_rate_hz_ = 20.0;
+    std::string real_joints_states_topic = "/omni_controller/joints_state";
+    std::string real_joints_command_topic = "/omni_controller/joints_reference";
 
     rclcpp::Subscription<pi3hat_moteus_int_msgs::msg::JointsStates>::SharedPtr states_subscription_;
 

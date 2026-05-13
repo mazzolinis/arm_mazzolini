@@ -2,7 +2,7 @@
 
 TestRealArmNode::TestRealArmNode() : Node("real_arm_test_node")
 {
-    command_publisher_ = this->create_publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>("joint_controller/command", 10);
+    command_publisher_ = this->create_publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>(real_joints_command_topic, 10);
 
     start_time_ = this->get_clock()->now();
     int period_ms = static_cast<int>(1000.0 / publish_rate_hz_);
@@ -12,7 +12,7 @@ TestRealArmNode::TestRealArmNode() : Node("real_arm_test_node")
     );
 
     states_subscription_ = this->create_subscription<pi3hat_moteus_int_msgs::msg::JointsStates>(
-        "state_broadcaster/joints_state",
+        real_joints_states_topic,
         10,
         std::bind(&TestRealArmNode::states_callback, this, std::placeholders::_1)
     );

@@ -108,6 +108,8 @@ add_executable(camera_info_publisher src/camera_info_publisher.cpp)
 add_executable(weeder_controller src/weeder_controller.cpp)
 add_executable(weeder_controller_with_YOLO src/weeder_controller_with_YOLO.cpp)
 add_executable(real_arm_test_node src/real_arm_test_node.cpp)
+add_executable(nuc_heartbeat_node src/nuc_heartbeat.cpp)
+add_executable(joints_state_republisher_node src/joints_state_republisher.cpp)
 
 
 ament_target_dependencies(
@@ -137,7 +139,14 @@ ament_target_dependencies(
   real_arm_test_node PUBLIC
   ${PROJECT_DEPENDENCIES}
 )
-
+ament_target_dependencies(
+  nuc_heartbeat_node PUBLIC
+  ${PROJECT_DEPENDENCIES}
+)
+ament_target_dependencies(
+  joints_state_republisher_node PUBLIC
+  ${PROJECT_DEPENDENCIES}
+)
 target_include_directories(kinematic_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
@@ -170,7 +179,14 @@ target_include_directories(real_arm_test_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>
 )
-
+target_include_directories(nuc_heartbeat_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+target_include_directories(joints_state_republisher_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
 install(
   DIRECTORY include
   DESTINATION include
@@ -204,7 +220,12 @@ install(TARGETS weeder_controller_with_YOLO
 install(TARGETS real_arm_test_node
   DESTINATION lib/${PROJECT_NAME}
 )
-
+install(TARGETS nuc_heartbeat_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+install(TARGETS joints_state_republisher_node
+  DESTINATION lib/${PROJECT_NAME}
+)
 # ============================================================================== #
 #                            PYTHON NODES
 # ============================================================================== #
