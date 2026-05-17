@@ -14,15 +14,16 @@ namespace arm_mazzolini
         sphere_detector = std::make_unique<SphereDetector>(roi_size, morph_kernel_size, depth_roi_size, mask_type);
         desired_position = sphere_detector->PBTargetPosition(desired_feature);
 
-        // Image subscriptions
-        auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
-        rgb_sub_.subscribe(this, camera_rgb_topic, qos.get_rmw_qos_profile());
-        depth_sub_.subscribe(this, camera_depth_topic, qos.get_rmw_qos_profile());
-        info_sub_.subscribe(this, camera_info_topic, qos.get_rmw_qos_profile());
-        sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), rgb_sub_, depth_sub_, info_sub_);
-        sync_->registerCallback(std::bind(&WeederController::image_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-
         if (!use_sim_time) {
+
+            // Image subscriptions — real cameras publish with best-effort/sensor-data QoS
+            auto qos = rclcpp::SensorDataQoS();
+            rgb_sub_.subscribe(this, camera_rgb_topic, qos.get_rmw_qos_profile());
+            depth_sub_.subscribe(this, camera_depth_topic, qos.get_rmw_qos_profile());
+            info_sub_.subscribe(this, camera_info_topic, qos.get_rmw_qos_profile());
+            sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), rgb_sub_, depth_sub_, info_sub_);
+            sync_->registerCallback(std::bind(&WeederController::image_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+
             // Joint states subscription
             states_subscription_ = this->create_subscription<pi3hat_moteus_int_msgs::msg::JointsStates>(
                 real_joints_states_topic,
@@ -35,6 +36,14 @@ namespace arm_mazzolini
 
         }
         else {
+
+            // Image subscriptions
+            auto qos = rclcpp::QoS(rclcpp::KeepLast(10)).reliable();
+            rgb_sub_.subscribe(this, camera_rgb_topic, qos.get_rmw_qos_profile());
+            depth_sub_.subscribe(this, camera_depth_topic, qos.get_rmw_qos_profile());
+            info_sub_.subscribe(this, camera_info_topic, qos.get_rmw_qos_profile());
+            sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), rgb_sub_, depth_sub_, info_sub_);
+            sync_->registerCallback(std::bind(&WeederController::image_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
             // Joint states subscription
             joint_state_sub = this->create_subscription<sensor_msgs::msg::JointState>(
@@ -55,6 +64,9 @@ namespace arm_mazzolini
             }
             goal_options.result_callback = std::bind(&WeederController::result_callback, this, std::placeholders::_1);
             goal_msg.trajectory.joint_names = joint_names;
+
+            // Joint trajectory publisher (for POSITIONING (visual servoing))
+            trajectory_pub = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/joint_trajectory_controller/joint_trajectory", 10);
 
         }
 
@@ -345,12 +357,12 @@ namespace arm_mazzolini
         joint_states[0] = msg->position[idx1];
         joint_states[1] = msg->position[idx2];
 
-        RCLCPP_DEBUG(
-            this->get_logger(),
-            "Joint states updated: joint1=%.3f joint2=%.3f",
-            joint_states[0],
-            joint_states[1]
-        );
+        // RCLCPP_DEBUG(
+        //     this->get_logger(),
+        //     "Joint states updated: joint1=%.3f joint2=%.3f",
+        //     joint_states[0],
+        //     joint_states[1]
+        // );
     }
 
     void WeederController::real_states_callback(
@@ -538,18 +550,26 @@ namespace arm_mazzolini
         last_joint_angles = joint_angles;
 
         if (use_sim_time) {
-            goal_msg.trajectory.points.clear();
-            trajectory_msgs::msg::JointTrajectoryPoint point;
-            point.positions = joint_angles;
             if (controller_status == ControllerStatus::POSITIONING) {
+                // For visual servoing I use publisher, not server-action
+                trajectory_msgs::msg::JointTrajectory traj;
+                traj.joint_names = joint_names;
+                trajectory_msgs::msg::JointTrajectoryPoint point;
+                point.positions = joint_angles;
                 point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_dt));
+                traj.points.push_back(point);
+
+                trajectory_pub->publish(traj);
             }
             else {
+                goal_msg.trajectory.points.clear();
+                trajectory_msgs::msg::JointTrajectoryPoint point;
+                point.positions = joint_angles;
                 point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_time_ms));
-            }
-            goal_msg.trajectory.points.push_back(point);
+                goal_msg.trajectory.points.push_back(point);
 
-            joints_client->async_send_goal(goal_msg, goal_options);
+                joints_client->async_send_goal(goal_msg, goal_options);
+            }            
         }
         else {
             pi3hat_moteus_int_msgs::msg::JointsCommand command_msg;
@@ -600,14 +620,11 @@ namespace arm_mazzolini
 
     void WeederController::control_callback()
     {
-
         if(controller_status != ControllerStatus::POSITIONING) {
             return;
         }
         else if (target_feature.isZero()) {
-            // std::vector<double> joint_goal = WeederController::PBVS_control(target_camera_position);
-            // send_joint_trajectory(joint_goal);
-            // Pass because PBVS doesn't work, there is an error in measuring Z
+            RCLCPP_DEBUG(this->get_logger(), "Target feature is zero, skipping control");
             return;
         }
         else {

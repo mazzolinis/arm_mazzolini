@@ -3,7 +3,7 @@
 
 namespace arm_mazzolini
 {
-    WeederController::WeederController() : Node("weeder_controller")
+    WeederControllerWithYolo::WeederControllerWithYolo() : Node("weeder_controller_with_YOLO")
     {
         // Parameters
         declare_and_get_parameters();
@@ -21,14 +21,14 @@ namespace arm_mazzolini
         depth_sub_.subscribe(this, camera_depth_topic, qos.get_rmw_qos_profile());
         info_sub_.subscribe(this, camera_info_topic, qos.get_rmw_qos_profile());
         sync_ = std::make_shared<message_filters::Synchronizer<SyncPolicy>>(SyncPolicy(10), rgb_sub_, depth_sub_, info_sub_);
-        sync_->registerCallback(std::bind(&WeederController::image_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+        sync_->registerCallback(std::bind(&WeederControllerWithYolo::image_callback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 
         if (!use_sim_time) {
             // Joint states subscription
             states_subscription_ = this->create_subscription<pi3hat_moteus_int_msgs::msg::JointsStates>(
                 "state_broadcaster/joints_state",
                 10,
-                std::bind(&WeederController::real_states_callback, this, std::placeholders::_1)
+                std::bind(&WeederControllerWithYolo::real_states_callback, this, std::placeholders::_1)
             );
 
             // Command publisher
@@ -41,7 +41,7 @@ namespace arm_mazzolini
             joint_state_sub = this->create_subscription<sensor_msgs::msg::JointState>(
                 "/joint_states", 
                 rclcpp::SensorDataQoS(),
-                std::bind(&WeederController::joint_states_callback, this, std::placeholders::_1)
+                std::bind(&WeederControllerWithYolo::joint_states_callback, this, std::placeholders::_1)
             );
 
             // Joint trajectory controller action client
@@ -54,8 +54,11 @@ namespace arm_mazzolini
                 RCLCPP_ERROR(this->get_logger(), "Shutting down...");
                 rclcpp::shutdown();
             }
-            goal_options.result_callback = std::bind(&WeederController::result_callback, this, std::placeholders::_1);
+            goal_options.result_callback = std::bind(&WeederControllerWithYolo::result_callback, this, std::placeholders::_1);
             goal_msg.trajectory.joint_names = joint_names;
+
+            // Joint trajectory publisher (for POSITIONING (visual servoing))
+            trajectory_pub = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/joint_trajectory_controller/joint_trajectory", 10);
 
         }
 
@@ -66,7 +69,7 @@ namespace arm_mazzolini
             this,
             this->get_clock(),
             rclcpp::Duration(std::chrono::milliseconds(tf_callback_period_ms)),
-            std::bind(&WeederController::pose_timer_callback, this)
+            std::bind(&WeederControllerWithYolo::pose_timer_callback, this)
         );
         last_warning_time = this->now();
 
@@ -78,16 +81,19 @@ namespace arm_mazzolini
             this,
             this->get_clock(),
             rclcpp::Duration(std::chrono::milliseconds(control_dt)),
-            std::bind(&WeederController::control_callback, this)
+            std::bind(&WeederControllerWithYolo::control_callback, this)
         );
+        last_detection_time = this->now();
 
         // Initial status
         new_pose.setIdentity();
         old_pose.setIdentity();
         controller_status = ControllerStatus::NO_TARGET;
+
+        RCLCPP_DEBUG(this->get_logger(), "SETUP COMPLETE");
     }
 
-    void WeederController::declare_and_get_parameters()
+    void WeederControllerWithYolo::declare_and_get_parameters()
     {
         try {
             // Declarations
@@ -95,7 +101,7 @@ namespace arm_mazzolini
             this->declare_parameter("link2_length", double());  
             this->declare_parameter("tf_callback_period", int());
             this->declare_parameter("image_buffer_size", int());
-            this->declare_parameter("frames_delay", int());
+            this->declare_parameter("detection_period_ms", int());
             this->declare_parameter("camera_rgb_topic", std::string());
             this->declare_parameter("camera_depth_topic", std::string());
             this->declare_parameter("camera_info_topic", std::string());
@@ -130,7 +136,7 @@ namespace arm_mazzolini
             tf_callback_period_ms = this->get_parameter("tf_callback_period").as_int();
             auto img_buffer_size = this->get_parameter("image_buffer_size").as_int();
             image_buffer_size = static_cast<size_t>(img_buffer_size);
-            frames_delay = this->get_parameter("frames_delay").as_int();
+            detection_period_ms = this->get_parameter("detection_period_ms").as_int();
             trajectory_time_ms = this->get_parameter("trajectory_time_ms").as_int();
 
             // Camera parameters
@@ -163,7 +169,7 @@ namespace arm_mazzolini
         }
     }
 
-    void WeederController::image_callback(
+    void WeederControllerWithYolo::image_callback(
         const sensor_msgs::msg::Image::ConstSharedPtr rgb_msg,
         const sensor_msgs::msg::Image::ConstSharedPtr depth_msg,
         const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg)
@@ -172,28 +178,28 @@ namespace arm_mazzolini
             // Hypothesis: camera info are constant
             weed_detector->SetCameraInfo(info_msg);
             camera_initialized = true;
+            RCLCPP_DEBUG(this->get_logger(), "Camera initialized");
         }
+
+        auto now = this->now();
+        double elapsed_ms = (now - last_detection_time).seconds() * 1000.0;
+        if (elapsed_ms < detection_period_ms)
+            return;
+        last_detection_time = now;
 
         switch (controller_status) {
             case ControllerStatus::NO_TARGET:
                 {
-                    if(current_frame_index < frames_delay) {
-                        // Not processing every message because unnecessary
-                        current_frame_index++;
+                    // NO DELAY: I already have detection_period_ms to throttle detection
+                    Eigen::Vector3d actual_position;
+                    RCLCPP_DEBUG(this->get_logger(), "Detecting target...");
+                    
+                    if(!weed_detector->PBTargetPosition(rgb_msg, depth_msg, actual_position)) {
+                        RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "No target detected");
                         return;
                     }
-                    else{
-                        current_frame_index = 0;
-
-                        Eigen::Vector3d actual_position;
-                        
-                        if(!weed_detector->PBTargetPosition(rgb_msg, depth_msg, actual_position)) {
-                            RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "No target detected");
-                            return;
-                        }
-                        else {
-                            controller_status = ControllerStatus::HAS_TARGET;
-                        }
+                    else {
+                        controller_status = ControllerStatus::HAS_TARGET;
                     }
                     // no break
                 }
@@ -294,7 +300,7 @@ namespace arm_mazzolini
         // TODO: altro da aggiungere?
     }
 
-    void WeederController::joint_states_callback(
+    void WeederControllerWithYolo::joint_states_callback(
         const sensor_msgs::msg::JointState::SharedPtr msg)
     {
 
@@ -336,7 +342,7 @@ namespace arm_mazzolini
         );
     }
 
-    void WeederController::real_states_callback(
+    void WeederControllerWithYolo::real_states_callback(
         const pi3hat_moteus_int_msgs::msg::JointsStates::SharedPtr msg)
     {
         if (controller_status == ControllerStatus::NO_TARGET) {
@@ -385,7 +391,7 @@ namespace arm_mazzolini
     }
 
     
-    void WeederController::pose_timer_callback()
+    void WeederControllerWithYolo::pose_timer_callback()
     {
         // check if transform is available
         if (!tf_buffer->canTransform("odom", "base_link", tf2::TimePointZero)) {
@@ -405,7 +411,7 @@ namespace arm_mazzolini
         }
     }
 
-    void WeederController::pose_callback(geometry_msgs::msg::TransformStamped msg)
+    void WeederControllerWithYolo::pose_callback(geometry_msgs::msg::TransformStamped msg)
     {
         // ------------------- TODO: What do I do of header? ----------------------
         new_pose = tf2::transformToEigen(msg); // convertion out of switch case because i could change message type
@@ -501,7 +507,7 @@ namespace arm_mazzolini
         old_pose = new_pose;
     }
 
-    void WeederController::send_joint_trajectory(const std::vector<double>& joint_angles)
+    void WeederControllerWithYolo::send_joint_trajectory(const std::vector<double>& joint_angles)
     {
         if (joint_angles.size() != joint_names.size()) {
             RCLCPP_ERROR(this->get_logger(), "Joint angles size does not match joint names size");
@@ -514,18 +520,26 @@ namespace arm_mazzolini
         last_joint_angles = joint_angles;
 
         if (use_sim_time) {
-            goal_msg.trajectory.points.clear();
-            trajectory_msgs::msg::JointTrajectoryPoint point;
-            point.positions = joint_angles;
             if (controller_status == ControllerStatus::POSITIONING) {
+                // For visual servoing I use publisher, not server-action
+                trajectory_msgs::msg::JointTrajectory traj;
+                traj.joint_names = joint_names;
+                trajectory_msgs::msg::JointTrajectoryPoint point;
+                point.positions = joint_angles;
                 point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_dt));
+                traj.points.push_back(point);
+
+                trajectory_pub->publish(traj);
             }
             else {
+                goal_msg.trajectory.points.clear();
+                trajectory_msgs::msg::JointTrajectoryPoint point;
+                point.positions = joint_angles;
                 point.time_from_start = rclcpp::Duration(std::chrono::milliseconds(trajectory_time_ms));
-            }
-            goal_msg.trajectory.points.push_back(point);
+                goal_msg.trajectory.points.push_back(point);
 
-            joints_client->async_send_goal(goal_msg, goal_options);
+                joints_client->async_send_goal(goal_msg, goal_options);
+            }            
         }
         else {
             pi3hat_moteus_int_msgs::msg::JointsCommand command_msg;
@@ -537,7 +551,7 @@ namespace arm_mazzolini
         }
     }
 
-    void WeederController::result_callback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult & result)
+    void WeederControllerWithYolo::result_callback(const rclcpp_action::ClientGoalHandle<control_msgs::action::FollowJointTrajectory>::WrappedResult & result)
     {
         switch (result.code) {
             case rclcpp_action::ResultCode::SUCCEEDED:
@@ -561,7 +575,7 @@ namespace arm_mazzolini
         }
     }
 
-    bool WeederController::vectors_are_equal(const std::vector<double>& vec1, const std::vector<double>& vec2)
+    bool WeederControllerWithYolo::vectors_are_equal(const std::vector<double>& vec1, const std::vector<double>& vec2)
     {
         if (vec1.size() != vec2.size()) {
             return false;
@@ -574,14 +588,14 @@ namespace arm_mazzolini
         return true;
     }
 
-    void WeederController::control_callback()
+    void WeederControllerWithYolo::control_callback()
     {
 
         if(controller_status != ControllerStatus::POSITIONING) {
             return;
         }
         else if (target_feature.isZero()) {
-            // std::vector<double> joint_goal = WeederController::PBVS_control(target_camera_position);
+            // std::vector<double> joint_goal = WeederControllerWithYolo::PBVS_control(target_camera_position);
             // send_joint_trajectory(joint_goal);
             // Pass because PBVS doesn't work, there is an error in measuring Z
             return;
@@ -594,13 +608,13 @@ namespace arm_mazzolini
                 target_feature.setZero(); 
             }
             else {
-                std::vector<double> joint_goal = WeederController::IBVS_control(target_feature);
+                std::vector<double> joint_goal = WeederControllerWithYolo::IBVS_control(target_feature);
                 send_joint_trajectory(joint_goal);
             }
         }
     }
 
-    std::vector<double> WeederController::PBVS_control(Eigen::Vector3d& target)
+    std::vector<double> WeederControllerWithYolo::PBVS_control(Eigen::Vector3d& target)
     {
         double dt = static_cast<double>(control_dt) / 1000.0;
 
@@ -660,7 +674,7 @@ namespace arm_mazzolini
         return {q_next(0), q_next(1)};
     }
 
-    std::vector<double> WeederController::IBVS_control(Eigen::Vector3d& feature)
+    std::vector<double> WeederControllerWithYolo::IBVS_control(Eigen::Vector3d& feature)
     {
         // feature è già normalizzato
         double u = feature.x();
@@ -749,7 +763,7 @@ namespace arm_mazzolini
         return {q_next(0), q_next(1)};
     }
 
-    void WeederController::activate_laser()
+    void WeederControllerWithYolo::activate_laser()
     {
         // Avoind having multiple threads if entering multiple times in this function
         if (keyboard_thread.joinable()) {
@@ -793,7 +807,7 @@ namespace arm_mazzolini
         // No detach — destructor joins the thread so shutdown is always clean.
     }
 
-    WeederController::~WeederController()
+    WeederControllerWithYolo::~WeederControllerWithYolo()
     {
         if (keyboard_thread.joinable()) {
             keyboard_thread.join();
@@ -805,7 +819,7 @@ namespace arm_mazzolini
 int main(int argc, char* argv[])
 {
     rclcpp::init(argc, argv);
-    auto node = std::make_shared<arm_mazzolini::WeederController>();
+    auto node = std::make_shared<arm_mazzolini::WeederControllerWithYolo>();
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

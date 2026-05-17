@@ -83,9 +83,8 @@ public:
      * Runs full inference and returns all detections above threshold.
      * Useful for publishing per-class markers, visualisation, etc.
      */
-    bool DetectAll(
-        const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
-        const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
+    bool RGB_analysis(
+        cv::Mat &rgb,
         std::vector<WeedDetection> &detections);
 
 private:

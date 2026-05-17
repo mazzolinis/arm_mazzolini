@@ -130,49 +130,19 @@ Eigen::Vector3d WeedDetector::PBTargetPosition(const Eigen::Vector3d &centroid_f
 // Extended API: all detections
 // ─────────────────────────────────────────────────────────────────────────────
 
-bool WeedDetector::DetectAll(
-    const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
-    const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
+bool WeedDetector::RGB_analysis(
+    cv::Mat &rgb,
     std::vector<WeedDetection> &detections)
 {
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] DetectAll start");
-    // ── Decode RGB ────────────────────────────────────────────────────────
-    cv::Mat rgb;
-    try
-    {
-        rgb = cv_bridge::toCvCopy(rgb_msg, sensor_msgs::image_encodings::RGB8)->image.clone();
-    }
-    catch (cv_bridge::Exception &ex)
-    {
-        RCLCPP_ERROR(rclcpp::get_logger("WeedDetector"),
-                     "cv_bridge RGB exception: %s", ex.what());
-        return false;
-    }
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] RGB decoded %dx%d", rgb.cols, rgb.rows);
-
-    // ── Decode Depth ──────────────────────────────────────────────────────
-    cv::Mat depth;
-    try
-    {
-        depth = cv_bridge::toCvCopy(depth_msg, depth_msg->encoding)->image.clone();
-    }
-    catch (cv_bridge::Exception &ex)
-    {
-        RCLCPP_ERROR(rclcpp::get_logger("WeedDetector"),
-                     "cv_bridge Depth exception: %s", ex.what());
-        return false;
-    }
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] Depth decoded");
-
-    const int orig_w = rgb.cols;
-    const int orig_h = rgb.rows;
+    RCLCPP_DEBUG_STREAM(rclcpp::get_logger("WeedDetector"),  
+    "RGB_analysis has started." << std::endl << "RGB has dimensions: " << rgb.cols << "x" << rgb.rows);
 
     // ── Pre-process ───────────────────────────────────────────────────────
     float scale;
     int pad_w, pad_h;
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] preprocess start");
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "RGB preprocess start");
     cv::Mat blob = preprocess(rgb, scale, pad_w, pad_h);
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] preprocess done");
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "RGB preprocess done");
 
     // ── Build input tensor ────────────────────────────────────────────────
     std::vector<int64_t> input_shape = {1, 3, model_input_h_, model_input_w_};
@@ -186,17 +156,19 @@ bool WeedDetector::DetectAll(
         input_shape.data(), input_shape.size());
 
     // ── Inference ─────────────────────────────────────────────────────────
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] inference start");
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "RGB inference start");
     auto outputs = session_->Run(
         Ort::RunOptions{nullptr},
         input_names_.data(),  &input_tensor, 1,
         output_names_.data(), output_names_.size());
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] inference done");
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "RGB inference done");
 
     // ── Post-process ──────────────────────────────────────────────────────
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] postprocess start");
+    const int orig_w = rgb.cols;
+    const int orig_h = rgb.rows;
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "RGB postprocess start");
     detections = postprocess(outputs, orig_w, orig_h, scale, pad_w, pad_h);
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] postprocess done, %zu detections", detections.size());
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "RGB postprocess done, %zu detections", detections.size());
 
     // ── Add depth to each detection ───────────────────────────────────────
     for (auto &det : detections)
@@ -204,7 +176,7 @@ bool WeedDetector::DetectAll(
         det.centroid = maskCentroid(det.mask);
     }
 
-    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace] DetectAll end");
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "RGB analysis end");
     return !detections.empty();
 }
 
@@ -219,27 +191,22 @@ bool WeedDetector::detect(
     double    &Z,
     int       *best_class_id)
 {
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "Detect start");
+    // RGB analysis 
+    cv::Mat rgb;
+    try {
+        rgb = cv_bridge::toCvCopy(rgb_msg, sensor_msgs::image_encodings::RGB8)->image.clone();
+    }
+    catch (cv_bridge::Exception &ex) {
+        RCLCPP_ERROR(rclcpp::get_logger("WeedDetector"), "cv_bridge RGB exception: %s", ex.what());
+        return false;
+    }
+
     std::vector<WeedDetection> detections;
-
-    // ── Decode Depth (needed here for Z) ──────────────────────────────────
-    cv::Mat depth;
-    try
-    {
-        depth = cv_bridge::toCvCopy(depth_msg, depth_msg->encoding)->image;
-    }
-    catch (cv_bridge::Exception &ex)
-    {
-        RCLCPP_ERROR(rclcpp::get_logger("WeedDetector"),
-                     "cv_bridge Depth exception: %s", ex.what());
-        return false;
-    }
-
-    // Re-use DetectAll for RGB inference
-    sensor_msgs::msg::Image::ConstSharedPtr dummy_depth = depth_msg; // not used inside
-    if (!DetectAll(rgb_msg, depth_msg, detections))
+    if (!RGB_analysis(rgb, detections))
         return false;
 
-    // ── Pick best detection (highest confidence) ──────────────────────────
+    // Pick best detection (highest confidence)
     const WeedDetection *best = nullptr;
     for (const auto &d : detections)
     {
@@ -248,6 +215,35 @@ bool WeedDetector::detect(
     }
 
     best_centroid = best->centroid;
+
+    // Decode Depth (needed here for Z)
+    cv::Mat depth;
+    try
+    {
+        cv::Mat depth_raw = cv_bridge::toCvCopy(depth_msg, depth_msg->encoding)->image;
+
+        if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+        {
+            depth = depth_raw;
+        }
+        else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+        {
+            depth_raw.convertTo(depth, CV_32F, 0.001);
+        }
+        else
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("WeedDetector"),
+                         "Unsupported depth encoding: %s", depth_msg->encoding.c_str());
+            return false;
+        }
+    }
+    catch (cv_bridge::Exception &ex)
+    {
+        RCLCPP_ERROR(rclcpp::get_logger("WeedDetector"),
+                     "cv_bridge Depth exception: %s", ex.what());
+        return false;
+    }
+
     Z = getDepthMedian(depth, best_centroid);
 
     if (best_class_id)
@@ -335,6 +331,19 @@ std::vector<WeedDetection> WeedDetector::postprocess(
     const int mH          = static_cast<int>(proto_shape[2]);
     const int mW          = static_cast<int>(proto_shape[3]);
 
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"),
+        "det_shape=[%ld,%ld,%ld] num_anchors=%d num_classes=%d num_masks=%d",
+        det_shape[0], det_shape[1], det_shape[2],
+        num_anchors, num_classes_, num_masks_);
+
+    // Stampa i primi score grezzi per capire il range
+    RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"),
+        "primo anchor: x=%.2f y=%.2f w=%.2f h=%.2f cls0=%.4f cls1=%.4f",
+        det_data[0*num_anchors+0], det_data[1*num_anchors+0],
+        det_data[2*num_anchors+0], det_data[3*num_anchors+0],
+        det_data[4*num_anchors+0], det_data[5*num_anchors+0]);
+        
+
     // ── Parse detections ──────────────────────────────────────────────────
     std::vector<cv::Rect2f> boxes;
     std::vector<float>      scores;
@@ -409,7 +418,6 @@ std::vector<WeedDetection> WeedDetector::postprocess(
 
         // ── Decode mask ───────────────────────────────────────────────────
         const int a = anchor_indices[k];
-        const float *coeff = det_data + (4 + num_classes_) * num_anchors + a;
         // coeff points to the first mask coefficient of this anchor
         // (layout: rows for each mask coeff are contiguous in column-major)
         // We need to gather the num_masks_ coefficients for anchor a:
@@ -522,7 +530,12 @@ cv::Mat WeedDetector::decodeMask(
                0, 0, cv::INTER_LINEAR);
     RCLCPP_DEBUG(rclcpp::get_logger("WeedDetector"), "[trace dm] resize done");
 
-    // Crop to bbox region in 640x640 space, then back-project to orig size
+    // Threshold + uint8 conversion (fully vectorized)
+    cv::Mat mask_lb_u8;
+    cv::compare(mask_fullsize, 0.5f, mask_lb_u8, cv::CMP_GT);
+    // mask_lb_u8 is now CV_8U with 0/255 values, size model_input_w x model_input_h
+
+    // Crop to letterboxed bbox area
     const int mW_int = static_cast<int>(model_input_w_);
     const int mH_int = static_cast<int>(model_input_h_);
     const int x1_lb  = std::clamp(bbox_lb.x,                    0, mW_int - 1);
@@ -533,32 +546,25 @@ cv::Mat WeedDetector::decodeMask(
                        std::max(1, x2_lb - x1_lb),
                        std::max(1, y2_lb - y1_lb));
 
-    // Build full-res binary mask in original image coordinates
-    cv::Mat full_mask = cv::Mat::zeros(orig_h, orig_w, CV_8U);
+    // Remove the letterbox padding region from the letterboxed mask
+    const int inner_w = mW_int - 2 * pad_w;
+    const int inner_h = mH_int - 2 * pad_h;
+    if (inner_w <= 0 || inner_h <= 0)
+        return cv::Mat::zeros(orig_h, orig_w, CV_8U);
 
-    // Map each pixel in orig image back to letterboxed space and threshold
-    for (int row = 0; row < orig_h; ++row)
-    {
-        for (int col = 0; col < orig_w; ++col)
-        {
-            float lb_x = col * scale + pad_w;
-            float lb_y = row * scale + pad_h;
-            int ix = static_cast<int>(std::round(lb_x));
-            int iy = static_cast<int>(std::round(lb_y));
-            if (ix < 0 || iy < 0 || ix >= model_input_w_ || iy >= model_input_h_)
-                continue;
-            if (mask_fullsize.at<float>(iy, ix) > 0.5f)
-                full_mask.at<uint8_t>(row, col) = 255;
-        }
-    }
+    cv::Mat mask_inner = mask_lb_u8(cv::Rect(pad_w, pad_h, inner_w, inner_h));
 
-    // Mask outside bbox (keeps only the instance region)
+    // Resize directly from letterboxed-inner space to original image size
+    cv::Mat full_mask;
+    cv::resize(mask_inner, full_mask, cv::Size(orig_w, orig_h), 0, 0, cv::INTER_NEAREST);
+
+    // Apply bbox-only mask in original coordinates
     cv::Rect orig_bbox(
         static_cast<int>((safe_bbox.x - pad_w) / scale),
         static_cast<int>((safe_bbox.y - pad_h) / scale),
         static_cast<int>(safe_bbox.width  / scale),
         static_cast<int>(safe_bbox.height / scale));
-    orig_bbox &= cv::Rect(0, 0, orig_w, orig_h);   // clamp to image
+    orig_bbox &= cv::Rect(0, 0, orig_w, orig_h);
 
     cv::Mat bbox_mask = cv::Mat::zeros(orig_h, orig_w, CV_8U);
     if (orig_bbox.width > 0 && orig_bbox.height > 0)
@@ -566,6 +572,7 @@ cv::Mat WeedDetector::decodeMask(
 
     return bbox_mask;
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Utilities

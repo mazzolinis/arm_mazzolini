@@ -27,11 +27,11 @@
 
 namespace arm_mazzolini
 {
-    class WeederController : public rclcpp::Node
+    class WeederControllerWithYolo : public rclcpp::Node
     {
         public:
-            WeederController();
-            ~WeederController();
+            WeederControllerWithYolo();
+            ~WeederControllerWithYolo();
 
         private:
 
@@ -63,7 +63,8 @@ namespace arm_mazzolini
         bool camera_initialized = false;
         std::vector<Eigen::Vector3d> target_buffer;
         size_t image_buffer_size;
-        int frames_delay;
+        int detection_period_ms;
+        rclcpp::Time last_detection_time;
         int current_frame_index = 0;
         float confidence_threshold;
         int depth_roi_size;
@@ -88,6 +89,7 @@ namespace arm_mazzolini
         rclcpp::TimerBase::SharedPtr pose_timer;
         rclcpp::TimerBase::SharedPtr control_timer;
         int control_dt;
+        int trajectory_time_ms;
         int trajectory_dt;
 
         // Thread
@@ -115,6 +117,7 @@ namespace arm_mazzolini
         // Subscriptions and publishers
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub;
         rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr joints_client;
+        rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr trajectory_pub;
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr laser_pub;
         rclcpp::Publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>::SharedPtr command_publisher_;
         rclcpp::Subscription<pi3hat_moteus_int_msgs::msg::JointsStates>::SharedPtr states_subscription_;
@@ -130,7 +133,6 @@ namespace arm_mazzolini
         std::unique_ptr<tf2_ros::Buffer> tf_buffer;
         std::shared_ptr<tf2_ros::TransformListener> tf_listener;
         rclcpp::Time last_warning_time;
-        int trajectory_time_ms;
         const uint64_t message_throttle_ms = 1000; // for INFO and WARN messages using THROTTLE
 
         // Functions

@@ -176,6 +176,8 @@ class SimulationProcessSpawner(Node):
         self.world_height = self.get_parameter('world_height').get_parameter_value().double_value
         self.declare_parameter('output_file', ' ')
         self.output_file = self.get_parameter('output_file').get_parameter_value().string_value
+        self.declare_parameter('use_yolo', False)
+        self.use_yolo = self.get_parameter('use_yolo').get_parameter_value().bool_value
 
     # =====================================================
 #                       NODES ARE WRITTEN HERE 
@@ -222,7 +224,6 @@ class SimulationProcessSpawner(Node):
                 delay=0.1
             )
         )
-
         # target spawner
         targets.append(
             SpawnTarget(
@@ -234,19 +235,33 @@ class SimulationProcessSpawner(Node):
                 delay=2.5
             )
         )
-
-        targets.append(
-            SpawnTarget(
-                name='weeder_controller',
-                package='arm_mazzolini',
-                executable='weeder_controller',
-                extra_args=[],
-                log_level='INFO',
-                params_file=self.parameters_yaml,
-                delay=1.0,
-                interactive=True
+        if self.use_yolo:
+            targets.append(
+                SpawnTarget(
+                    name='weeder_controller_with_YOLO',
+                    package='arm_mazzolini',
+                    executable='weeder_controller_with_YOLO',
+                    extra_args=[],
+                    log_level='INFO',
+                    params_file=self.parameters_yaml,
+                    delay=1.0,
+                    interactive=True
+                )
             )
-        )
+        else:
+            targets.append(
+                SpawnTarget(
+                    name='weeder_controller',
+                    package='arm_mazzolini',
+                    executable='weeder_controller',
+                    extra_args=[],
+                    log_level='INFO',
+                    params_file=self.parameters_yaml,
+                    delay=1.0,
+                    interactive=True
+                )
+            )
+        
 
         return targets
 
@@ -263,7 +278,7 @@ def main(args=None):
         node.destroy_node()
         try:
             rclpy.shutdown()
-        except rclpy._rclpy_pybind11.RCLError:
+        except Exception:
             # rcl_shutdown already called (e.g., by signal handler)
             pass
 

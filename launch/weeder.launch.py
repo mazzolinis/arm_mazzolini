@@ -48,6 +48,20 @@ def generate_launch_description():
             description="Set to false to disable RViz",
         )
     )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_yolo",
+            default_value="false",
+            description="If true launches weeder_controller_with_YOLO, otherwise uses ExGR algorithm"
+        )
+    )
+    declared_arguments.append(
+        DeclareLaunchArgument(
+            "use_virtual_maize",
+            default_value="true",
+            description="If true uses virtual_maize_field.sdf, which is more detailed than agricultural world"
+        )
+    )
 
     # Initialize Arguments
     use_sim_time = LaunchConfiguration("use_sim_time")
@@ -55,6 +69,8 @@ def generate_launch_description():
     world_height = LaunchConfiguration("world_height")
     is_light = LaunchConfiguration("is_light")
     use_rviz = LaunchConfiguration("use_rviz")
+    use_yolo = LaunchConfiguration("use_yolo")
+    use_virtual_maize = LaunchConfiguration("use_virtual_maize")
 
     # Other parameters (this can be set only from launch file)
     pkg_share = FindPackageShare("arm_mazzolini")
@@ -162,18 +178,18 @@ def generate_launch_description():
     nodes.append(spawn_entity)
     # nodes.append(TimerAction(period=5.0, actions=[spawn_entity]))
 
-    # spawn_world = Node(
-    #     package = "ros_gz_sim",
-    #     executable = "create",
-    #     arguments = ['-file', PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "urdf", "agriculture_geometry.urdf"]),
-    #                  '-name', 'agriculture_world',
-    #                  '-x', '0', '-y', '-4.0', '-z', PythonExpression([world_height, '+ 0.1']),
-    #                  '-R', '0', '-P', '0', '-Y', '0',],
-    #     parameters=[{'use_sim_time': use_sim_time}],
-    #     output = 'screen',
-    #     condition = IfCondition(use_sim_time),
-    # )
-    # nodes.append(spawn_world)
+    spawn_world = Node(
+        package = "ros_gz_sim",
+        executable = "create",
+        arguments = ['-file', PathJoinSubstitution([FindPackageShare("arm_mazzolini"), "urdf", "agriculture_geometry.urdf"]),
+                     '-name', 'agriculture_world',
+                     '-x', '0', '-y', '-4.0', '-z', PythonExpression([world_height, '+ 0.1']),
+                     '-R', '0', '-P', '0', '-Y', '0',],
+        parameters=[{'use_sim_time': use_sim_time}],
+        output = 'screen',
+        condition = IfCondition(PythonExpression(["'", use_virtual_maize, "' == 'false' and '", use_sim_time, "' == 'true'"]))
+    )
+    nodes.append(spawn_world)
 
     rviz_config_file = PathJoinSubstitution(
         [FindPackageShare("arm_mazzolini"), "rviz", "second_config.rviz"]
@@ -232,18 +248,8 @@ def generate_launch_description():
     )
     nodes.append(gazebo_target_visualizer)
 
-    # rviz_target_visualizer = Node(
-    #     package = "arm_mazzolini",
-    #     executable = "rviz_target_visualizer",
-    #     name = "rviz_target_visualizer",
-    #     parameters = [{"use_sim_time":use_sim_time}],
-    #     output = "screen",
-    #     condition = IfCondition(use_rviz)
-    # )
-    # nodes.append(RegisterEventHandler(OnProcessExit(target_action=spawn_entity, on_exit=[TimerAction(period=20.0, actions=[rviz_target_visualizer])])))
-
     # This node spawns controllers (diff drive, joint trajectory), weeder controller and target spawner when simulation starts
-    simulation_spawner = Node(
+    simulation_process_spawner = Node(
         package='arm_mazzolini',
         executable='simulation_process_spawner.py',
         name='simulation_process_spawner',
@@ -253,11 +259,12 @@ def generate_launch_description():
             'world_height': world_height,
             'use_sim_time': use_sim_time,
             'output_file': output_file,
+            'use_yolo': use_yolo,
         }],
         condition = IfCondition(use_sim_time), # This node works only in simulation
         output='screen',
     )
-    nodes.append(simulation_spawner)
+    nodes.append(simulation_process_spawner)
 
     weeder_controller = Node(
         package="arm_mazzolini",
@@ -266,9 +273,21 @@ def generate_launch_description():
         parameters=[
             {"use_sim_time": use_sim_time},
                     parameters_file],
-        condition = UnlessCondition(use_sim_time)
+        condition = IfCondition(PythonExpression(["'", use_yolo, "' == 'false' and '", use_sim_time, "' == 'false'"]))
     )
     nodes.append(weeder_controller)
+
+    weeder_controller_with_YOLO = Node(
+        package="arm_mazzolini",
+        executable="weeder_controller_with_YOLO",
+        name="weeder_controller_with_YOLO",
+        parameters=[
+            {"use_sim_time": use_sim_time},
+            parameters_file,
+        ],
+        condition = IfCondition(PythonExpression(["'", use_yolo, "' == 'true' and '", use_sim_time, "' == 'false'"]))
+    )
+    nodes.append(weeder_controller_with_YOLO)
 
     nuc_heartbeat_node = Node(
         package="arm_mazzolini",
@@ -330,36 +349,5 @@ def generate_launch_description():
         condition = IfCondition(use_sim_time)
     )
     nodes.append(rgb_rectify)
-
-    # TODO: depth/rectify non esiste. Devo usare qualcos'altro oppure è automatico?
-    # depth_rectify = Node(
-    #     package="depth_image_proc",
-    #     executable="rectify",
-    #     namespace="simulated_D435",
-    #     remappings=[
-    #         ("image", "/simulated_D435/depth_image"),
-    #         ("camera_info", "/simulated_D435/camera_info"),
-    #     ],
-    #     parameters=[{"use_sim_time": use_sim_time}],
-    #     condition = IfCondition(use_sim_time)
-    # )
-    # nodes.append(depth_rectify)
-
-
-    # # Create point cloud from depth image (is this necessary?)
-    # point_cloud_node = Node(
-    #     package="depth_image_proc",
-    #     executable="point_cloud_xyzrgb_node",
-    #     namespace="simulated_D435",
-    #     remappings=[
-    #         ("rgb/image_rect", "/simulated_D435/image_rect"),
-    #         ("rgb/camera_info", "/simulated_D435/camera_info"),
-    #         ("depth/image", "/simulated_D435/depth_image"),
-    #         ("points", "/simulated_D435/points"),
-    #     ],
-    #     parameters=[{"use_sim_time": use_sim_time}],
-    #     condition = IfCondition(use_sim_time)
-    # )
-    # nodes.append(point_cloud_node)
 
     return LaunchDescription(declared_arguments + gazebo + nodes)

@@ -111,11 +111,28 @@ namespace arm_mazzolini
             return false;
         }
 
-        // depth analysis
+        // Depth analysis
         cv::Mat depth;
         try
         {
-            depth = cv_bridge::toCvCopy(depth_msg, depth_msg->encoding)->image;
+            cv::Mat depth_raw = cv_bridge::toCvCopy(depth_msg, depth_msg->encoding)->image;
+
+            if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+            {
+                // Gazebo simulated camera
+                depth = depth_raw;
+            }
+            else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+            {
+                // Real camera
+                depth_raw.convertTo(depth, CV_32F, 0.001);
+            }
+            else
+            {
+                RCLCPP_ERROR(rclcpp::get_logger("SphereDetector"),
+                            "Unsupported depth encoding: %s", depth_msg->encoding.c_str());
+                return false;
+            }
         }
         catch (cv_bridge::Exception &ex)
         {
@@ -306,7 +323,7 @@ namespace arm_mazzolini
                 int y = center.y + j;
                 if (x < 0 || y < 0 || x >= depth.cols || y >= depth.rows)
                     continue;
-                double d = depth.at<double>(y,x);
+                double d = static_cast<double>(depth.at<float>(y,x));  // Note: depth.at<float>(y,x) because depth is CV_32F
                 if (std::isfinite(d) && d > 0.02)
                     values.push_back(d);
             }

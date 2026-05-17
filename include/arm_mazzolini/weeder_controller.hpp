@@ -117,6 +117,7 @@ namespace arm_mazzolini
         // Subscriptions and publishers
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub;
         rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr joints_client;
+        rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr trajectory_pub;
         rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr laser_pub;
         rclcpp::Publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>::SharedPtr command_publisher_;
         rclcpp::Subscription<pi3hat_moteus_int_msgs::msg::JointsStates>::SharedPtr states_subscription_;
