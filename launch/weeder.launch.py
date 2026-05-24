@@ -83,7 +83,7 @@ def generate_launch_description():
     )
     parameters_file = PathJoinSubstitution([pkg_share, "config", "weeder_parameters.yaml"])
     camera_config_file = PathJoinSubstitution([pkg_share, "config", "simulated_D435_parameters.yaml"])
-    output_file = PathJoinSubstitution(["/home", "simone", "Scrivania", "first_test_data.csv"])
+    output_file = PathJoinSubstitution(["/home", "simone", "Scrivania", "YOLO_first_test.csv"])
 
     # Path to robot description file (xacro)
     robot = PythonExpression([
@@ -144,7 +144,7 @@ def generate_launch_description():
         }.items(),
         condition = UnlessCondition(use_sim_time),
     )
-    gazebo.append(real_camera_launch)
+    gazebo.append(TimerAction(period=5.0, actions=[real_camera_launch]))
 
     # =========================================
     #                 NODES
@@ -192,7 +192,7 @@ def generate_launch_description():
     nodes.append(spawn_world)
 
     rviz_config_file = PathJoinSubstitution(
-        [FindPackageShare("arm_mazzolini"), "rviz", "second_config.rviz"]
+        [FindPackageShare("arm_mazzolini"), "rviz", "real_arm_config.rviz"]
     )
     rviz_node = Node(
         package="rviz2",
@@ -215,27 +215,12 @@ def generate_launch_description():
         # '/simulated_D435/camera_info@sensor_msgs/msg/CameraInfo@gz.msgs.CameraInfo', # Should I use it?
         '/simulated_D435/depth_image@sensor_msgs/msg/Image[gz.msgs.Image',
         '/simulated_D435/image@sensor_msgs/msg/Image[gz.msgs.Image',
-        '/model/weeder_robot/pose@tf2_msgs/msg/TFMessage[ignition.msgs.Pose_V',
+        '/world/agricultural_world/pose/info@tf2_msgs/msg/TFMessage[ignition.msgs.Pose_V',
         ],
         condition=IfCondition(use_sim_time),
         output='screen'
     )
     nodes.append(gz_bridge)
-
-    ground_truth_tf_publisher = Node(
-        package='arm_mazzolini',
-        executable='ground_truth_tf_publisher.py',
-        name='ground_truth_tf_publisher',
-        parameters=[
-            {'use_sim_time': use_sim_time},
-            {'gz_model_name': 'weeder_robot'},
-            {'odom_topic': '/diff_drive_controller/odom'},
-        ],
-        output='screen',
-        condition=IfCondition(use_sim_time),
-    )
-    nodes.append(ground_truth_tf_publisher)
-
 
     gazebo_target_visualizer = Node(
         package = "arm_mazzolini",
@@ -273,6 +258,7 @@ def generate_launch_description():
         parameters=[
             {"use_sim_time": use_sim_time},
                     parameters_file],
+        arguments=["--ros-args", "--log-level", "INFO"],
         condition = IfCondition(PythonExpression(["'", use_yolo, "' == 'false' and '", use_sim_time, "' == 'false'"]))
     )
     nodes.append(weeder_controller)
@@ -309,7 +295,6 @@ def generate_launch_description():
         ],
     )
     nodes.append(joints_state_republisher)
-
 
     camera_tf_publisher = Node(
         package="tf2_ros",

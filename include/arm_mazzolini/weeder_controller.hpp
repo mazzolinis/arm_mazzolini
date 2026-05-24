@@ -17,8 +17,6 @@
 #include <tf2_ros/buffer.h>
 
 #include <memory>
-#include <thread>
-#include <atomic>
 
 #include "arm_mazzolini/sphere_detector.hpp"
 #include "arm_mazzolini/arm_kinematic.hpp"
@@ -77,11 +75,22 @@ namespace arm_mazzolini
         
         // Joint parameters
         std::vector<std::string> joint_names = {"joint1", "joint2"};
-        std::vector<double> kp_scale = {1.0, 1.0};
-        std::vector<double> kd_scale = {1.0, 1.0};
-        const std::vector<double> initial_joint_values = {-M_PI/3, M_PI/3}; 
+        std::vector<double> kp_scale;
+        std::vector<double> kd_scale;
+        const std::vector<double> initial_joint_values = {-M_PI/4, M_PI/4}; 
         std::vector<double> joint_states = initial_joint_values;
         std::vector<double> last_joint_angles;
+        bool return_motion_active_ = false;
+        double return_motion_elapsed_ = 0.0;
+        rclcpp::Time return_motion_last_tick_;
+        std::vector<double> return_motion_start_positions_;
+        bool joint_states_received_ = false;          // true dopo il primo messaggio di stato reale
+        double return_motion_duration;         // durata spline di ritorno [s], da YAML (solo !use_sim_time)
+        bool arm_motion_active_ = false;
+        rclcpp::Time arm_motion_start_time_;
+        std::vector<double> arm_motion_start_positions_;
+        std::vector<double> arm_motion_target_positions_;
+        double forward_motion_duration;
         const double joint_tolerance = 2e-4; // radians
         std::string real_joints_states_topic = "/omni_controller/joints_state";
         std::string real_joints_command_topic = "/omni_controller/joints_reference";
@@ -93,8 +102,7 @@ namespace arm_mazzolini
         int trajectory_dt;
 
         // Thread
-        std::thread keyboard_thread;
-        std::atomic<bool> keyboard_thread_active_{false};
+        rclcpp::TimerBase::SharedPtr laser_timer;
 
         // Control and filter gains
         Eigen::Vector3d target_feature = Eigen::Vector3d::Zero(); // u, v, Z feature of the target in camera frame
@@ -128,6 +136,9 @@ namespace arm_mazzolini
         message_filters::Subscriber<sensor_msgs::msg::CameraInfo> info_sub_;
         typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image,sensor_msgs::msg::Image,sensor_msgs::msg::CameraInfo> SyncPolicy;
         std::shared_ptr<message_filters::Synchronizer<SyncPolicy>> sync_;
+        typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::msg::Image,sensor_msgs::msg::Image> RealSyncPolicy;
+        std::shared_ptr<message_filters::Synchronizer<RealSyncPolicy>> real_sync;
+        rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr real_info_sub;
 
         // TF2 parameters
         std::unique_ptr<tf2_ros::Buffer> tf_buffer;
@@ -153,6 +164,9 @@ namespace arm_mazzolini
                             const sensor_msgs::msg::Image::ConstSharedPtr depth_msg,
                             const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg);
         void control_callback();
+        void real_image_callback(const sensor_msgs::msg::Image::ConstSharedPtr rgb_msg,
+                    const sensor_msgs::msg::Image::ConstSharedPtr depth_msg);
+        void real_info_callback(const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg);
         void real_states_callback(const pi3hat_moteus_int_msgs::msg::JointsStates::SharedPtr msg);
 
         // Other packages

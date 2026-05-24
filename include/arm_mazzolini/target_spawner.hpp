@@ -6,7 +6,7 @@
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <std_msgs/msg/bool.hpp>
-
+#include <tf2_msgs/msg/tf_message.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
@@ -41,6 +41,7 @@ class TargetSpawner : public rclcpp::Node
         // rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr laser_sub;
         rclcpp::Subscription<geometry_msgs::msg::PointStamped>::SharedPtr laser_position_sub;
         rclcpp::Subscription<geometry_msgs::msg::PoseArray>::SharedPtr pose_sub;
+        rclcpp::Subscription<tf2_msgs::msg::TFMessage>::SharedPtr ground_truth_sub;
 
         // Timer and buffer
         rclcpp::TimerBase::SharedPtr timer;
@@ -52,6 +53,7 @@ class TargetSpawner : public rclcpp::Node
         void timer_callback();
         void laser_callback(const geometry_msgs::msg::PointStamped::SharedPtr msg);
         // void pose_callback(const geometry_msgs::msg::Pose::SharedPtr msg);
+        void ground_truth_callback(const tf2_msgs::msg::TFMessage::SharedPtr msg);
 
         // Variables
         const int spawn_period = 2; // seconds between laser and new target
@@ -62,6 +64,8 @@ class TargetSpawner : public rclcpp::Node
         const double lato = 0.2;
         // Eigen::Vector3d center = Eigen::Vector3d(-0.08, -0.78, 1.27); 
         Eigen::Vector3d center = Eigen::Vector3d(0.0, 1.35, 0.33); 
+        Eigen::Isometry3d world_to_base_link;
+        Eigen::Vector3d target_position_world;
         
         // Random numbers generators
         std::mt19937 gen;

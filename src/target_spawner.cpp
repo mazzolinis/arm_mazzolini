@@ -1,6 +1,6 @@
 #include "arm_mazzolini/target_spawner.hpp"
 
-TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
+TargetSpawner::TargetSpawner() : Node("target_spawner"),
     gen(std::random_device{}()),
     dist_rand(min_distance, max_distance),
     angle_rand(-angle_range/2, angle_range/2),
@@ -41,6 +41,28 @@ TargetSpawner::TargetSpawner() : Node("target_spawner_node"),
         rclcpp::Duration(std::chrono::seconds(spawn_period)), 
         std::bind(&TargetSpawner::timer_callback, this)
     );
+
+    ground_truth_sub = this->create_subscription<tf2_msgs::msg::TFMessage>(
+        "/world/agricultural_world/pose/info", 10, std::bind(&TargetSpawner::ground_truth_callback, this, std::placeholders::_1)
+    );
+
+}
+
+void TargetSpawner::ground_truth_callback(const tf2_msgs::msg::TFMessage::SharedPtr msg)
+{
+    for (const auto & tf : msg->transforms) {
+        if (tf.child_frame_id == "weeder_robot") {
+            // convert to Eigen
+            world_to_base_link = tf2::transformToEigen(tf.transform);
+            RCLCPP_DEBUG_ONCE(this->get_logger(), "Ground truth received, updated world_to_base_link");
+        }
+        else if (tf.child_frame_id.rfind("target_sphere", 0) == 0) {
+            target_position_world.x() = tf.transform.translation.x;
+            target_position_world.y() = tf.transform.translation.y;
+            target_position_world.z() = tf.transform.translation.z;
+            RCLCPP_DEBUG_ONCE(this->get_logger(), "Ground truth target position received");
+        }
+    }
 }
 
 void TargetSpawner::timer_callback()
@@ -117,43 +139,42 @@ void TargetSpawner::laser_callback(const geometry_msgs::msg::PointStamped::Share
 {
 
     // =======================
-    // PARTE NUOVA CON TF
+    // PARTE NUOVA CON GROUND TRUTH
     // =======================
-    // Eigen::Vector3d laser_position_world;
+    Eigen::Vector3d base_to_laser;
+    try {
+        auto laser_tf = tf_buffer->lookupTransform(
+            "base_link", "laser", tf2::TimePointZero, tf2::durationFromSec(0.1));
+        base_to_laser.x() = laser_tf.transform.translation.x;
+        base_to_laser.y() = laser_tf.transform.translation.y;
+        base_to_laser.z() = laser_tf.transform.translation.z;
+    }
+    catch (const tf2::TransformException &ex) {
+        RCLCPP_WARN(this->get_logger(), "base_link->laser non disponibile: %s", ex.what());
+        return;
+    }
 
-    // try {
-    //     auto laser_tf = tf_buffer->lookupTransform(
-    //         "world", "laser", tf2::TimePointZero, tf2::durationFromSec(0.1));
-    //     laser_position_world.x() = laser_tf.transform.translation.x;
-    //     laser_position_world.y() = laser_tf.transform.translation.y;
-    //     laser_position_world.z() = laser_tf.transform.translation.z;
-    // }
-    // catch (const tf2::TransformException &ex) {
-    //     RCLCPP_WARN(this->get_logger(), "world->laser non disponibile: %s", ex.what());
-    //     return;
-    // }
+    Eigen::Vector3d laser_position_world = world_to_base_link * base_to_laser;
 
-    // std::tuple<double, double, double, double> data_entry(
-    //     target_position.x(), target_position.y(), 
-    //     laser_position_world.x(), laser_position_world.y()
-    // );
-    // std::lock_guard<std::mutex> guard(buffer_mutex);
-    // buffer.push_back(data_entry);
-
-    // ===============================
-    // QUESTA PARTE ERA FUNZIONANTE
-    // ===============================
-    Eigen::Vector3d lasered_position;
-    tf2::fromMsg(msg->point, lasered_position);
-
-    // Try printing more data to see the error
     std::tuple<double, double, double, double> data_entry(
-        target_position.x(), target_position.y(), 
-        lasered_position.x(), lasered_position.y()
+        target_position_world.x(), target_position_world.y(), 
+        laser_position_world.x(), laser_position_world.y()
     );
     std::lock_guard<std::mutex> guard(buffer_mutex);
     buffer.push_back(data_entry);
 
+    // // ===============================
+    // // QUESTA PARTE ERA FUNZIONANTE
+    // // ===============================
+    // Eigen::Vector3d lasered_position;
+    // tf2::fromMsg(msg->point, lasered_position);
+
+    // std::tuple<double, double, double, double> data_entry(
+    //     target_position.x(), target_position.y(), 
+    //     lasered_position.x(), lasered_position.y()
+    // );
+    // std::lock_guard<std::mutex> guard(buffer_mutex);
+    // buffer.push_back(data_entry);
 
     // ===============================
     //  DO NOT REMOVE THIS PART

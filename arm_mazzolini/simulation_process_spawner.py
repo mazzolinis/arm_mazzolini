@@ -231,8 +231,10 @@ class SimulationProcessSpawner(Node):
                 package='arm_mazzolini',
                 executable='target_spawner',
                 extra_args=[],
+                log_level='INFO',
                 inline_params={'world_height': self.world_height, 'output_file': self.output_file},
-                delay=2.5
+                delay=2.5,
+                interactive=False
             )
         )
         if self.use_yolo:

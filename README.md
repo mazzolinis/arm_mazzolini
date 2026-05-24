@@ -47,3 +47,8 @@ In questo modo i bracci oscilleranno attorno alla posizione zero.
 
 - I file `arm_mazzolini.xacro` e `arm_mazzolini_controller.yaml` sono da copiare su raspberry; gli ID sono settati sull'ultima giornata.
 - Il file `weeder_parameters.yaml` contiene i nomi dei topic su cui pubblica la Realsense; erano stati impostati all'ultimo test, controllare che corrispondano.
+
+## Utilizzo segmentation con YOLOv11
+
+Impostando `use_sim_time:=true` si attiva la rete YOLO. 
+Verificare che si stia utilizzando una scheda video e che le impostazioni CUDA siano corrette.

@@ -234,7 +234,6 @@ ament_python_install_package(${PROJECT_NAME})
 
 install(PROGRAMS
   arm_mazzolini/simulation_process_spawner.py
-  arm_mazzolini/ground_truth_tf_publisher.py
   arm_mazzolini/video_recorder.py
   DESTINATION lib/${PROJECT_NAME}
 )
