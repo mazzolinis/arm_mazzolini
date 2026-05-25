@@ -21,11 +21,11 @@ namespace arm_mazzolini {
         double r = std::sqrt(x*x + y*y);
 
         // Check for errors
-        if (x < 0 || r < std::abs(l1_ - l2_)) {
+        if (x < 0 || r < std::abs(l1_ - l2_ + 0.05)) {
             error_type = ErrorType::EXCLUSION_ZONE;
             return false;
         }
-        else if (r > (l1_ + l2_) ) {
+        else if (r > (l1_ + l2_ - 0.05) ) {
             error_type = ErrorType::TARGET_TOO_FAR;
             return false;
         }

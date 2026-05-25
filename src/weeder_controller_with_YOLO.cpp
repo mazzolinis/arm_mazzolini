@@ -37,8 +37,12 @@ namespace arm_mazzolini
                 std::bind(&WeederControllerWithYolo::real_states_callback, this, std::placeholders::_1)
             );
 
+            message_throttle_ms = message_throttle_ms * 5;
+
             // Command publisher
             command_publisher_ = this->create_publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>(real_joints_command_topic, 10);
+            // Laser publisher
+            real_laser_pub = this->create_publisher<std_msgs::msg::Empty>("/shoot", 10);
 
         }
         else {
@@ -74,8 +78,8 @@ namespace arm_mazzolini
             // Joint trajectory publisher (for POSITIONING (visual servoing))
             trajectory_pub = this->create_publisher<trajectory_msgs::msg::JointTrajectory>("/joint_trajectory_controller/joint_trajectory", 10);
 
-            message_throttle_ms = message_throttle_ms * 5;
-
+            // Laser publisher
+            simulated_laser_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("/lasered_position", 10);
         }
 
         // TF2 listener
@@ -88,9 +92,6 @@ namespace arm_mazzolini
             std::bind(&WeederControllerWithYolo::pose_timer_callback, this)
         );
         last_warning_time = this->now();
-
-        // Laser publisher
-        laser_pub = this->create_publisher<geometry_msgs::msg::PointStamped>("/lasered_position", 10);
 
         // Timer for visual servoing
         control_timer = rclcpp::create_timer(
@@ -128,8 +129,11 @@ namespace arm_mazzolini
             this->declare_parameter("visual_servoing.filtering", true);
             // this->declare_parameter("visual_servoing.alpha", std::vector<double>());
             this->declare_parameter("visual_servoing.beta", std::vector<double>());
-            this->declare_parameter("visual_servoing.lambda_IBVS", std::vector<double>());
-            this->declare_parameter("visual_servoing.lambda_PBVS", std::vector<double>());
+            this->declare_parameter("visual_servoing.lambda_IBVS", double());
+            this->declare_parameter("visual_servoing.variable_gain", false);
+            this->declare_parameter("visual_servoing.lambda_0", double());
+            this->declare_parameter("visual_servoing.lambda_inf", double());
+            this->declare_parameter("visual_servoing.lambda_prime_0", double());
             this->declare_parameter("visual_servoing.controller_period_ms", int());
             this->declare_parameter("visual_servoing.smoothing", double());
             this->declare_parameter("visual_servoing.control_threshold", 0.005);
@@ -169,10 +173,11 @@ namespace arm_mazzolini
             // alpha = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.alpha").as_double_array().data());
             beta = Eigen::Vector3d::Map(this->get_parameter("visual_servoing.beta").as_double_array().data());
 
-            std::vector<double> lambda_IBVS_vec = this->get_parameter("visual_servoing.lambda_IBVS").as_double_array();
-            lambda_IBVS.diagonal() << lambda_IBVS_vec[0], lambda_IBVS_vec[1], lambda_IBVS_vec[2];
-            std::vector<double> lambda_PBVS_vec = this->get_parameter("visual_servoing.lambda_PBVS").as_double_array();
-            lambda_PBVS.diagonal() << lambda_PBVS_vec[0], lambda_PBVS_vec[1], lambda_PBVS_vec[2];
+            lambda_IBVS = this->get_parameter("visual_servoing.lambda_IBVS").as_double();
+            variable_gain = this->get_parameter("visual_servoing.variable_gain").as_bool();
+            lambda_0 = this->get_parameter("visual_servoing.lambda_0").as_double();
+            lambda_inf = this->get_parameter("visual_servoing.lambda_inf").as_double();
+            lambda_prime_0 = this->get_parameter("visual_servoing.lambda_prime_0").as_double();
 
             control_dt = this->get_parameter("visual_servoing.controller_period_ms").as_int();
             double smoothing = this->get_parameter("visual_servoing.smoothing").as_double();
@@ -227,6 +232,7 @@ namespace arm_mazzolini
                     }
                     else {
                         controller_status = ControllerStatus::HAS_TARGET;
+                        return_motion_active_ = false;
                     }
                     // no break
                 }
@@ -245,7 +251,7 @@ namespace arm_mazzolini
                     // Target detected = add it to buffer
                     else {
                         target_buffer.push_back(actual_position);
-                        RCLCPP_INFO(this->get_logger(), "Target detected at [%.3f, %.3f, %.3f] in camera frame", actual_position[0], actual_position[1], actual_position[2]);
+                        RCLCPP_DEBUG(this->get_logger(), "Target detected at [%.3f, %.3f, %.3f] in camera frame", actual_position[0], actual_position[1], actual_position[2]);
 
                         // Buffer full = compute average and move to that position
                         if(target_buffer.size() >= image_buffer_size) {
@@ -256,6 +262,7 @@ namespace arm_mazzolini
                             
                             target_camera_position /= static_cast<double>(image_buffer_size);
                             target_buffer.clear();
+                            RCLCPP_INFO(this->get_logger(), "Target found. STOP!");
 
                             try {
                                 
@@ -365,6 +372,7 @@ namespace arm_mazzolini
                     }
                     else {
                         controller_status = ControllerStatus::HAS_TARGET;
+                        return_motion_active_ = false;
                     }
                     // no break
                 }
@@ -619,7 +627,7 @@ namespace arm_mazzolini
                         // Start spline only if we are actually far from the initial pose
                         if (vectors_are_equal(joint_states, initial_joint_values)) {
                             // Already in place: nothing to do
-                            break;
+                            return;
                         }
                         return_motion_elapsed_         = 0.0;
                         return_motion_last_tick_       = this->get_clock()->now();
@@ -636,8 +644,13 @@ namespace arm_mazzolini
                         // Accumulate only the time actually spent in NO_TARGET so that
                         // spurious state transitions (e.g. transient target detections)
                         // do not eat into the 10-second budget.
+                        // Cap delta to one timer period: if we were away in another state,
+                        // (now - last_tick) would span the entire ARM_MOVING+POSITIONING+LASERING
+                        // duration and jump t past 1.0 immediately.
                         auto now = this->get_clock()->now();
-                        return_motion_elapsed_ += (now - return_motion_last_tick_).seconds();
+                        const double max_delta = static_cast<double>(tf_callback_period_ms) / 1000.0;
+                        double delta = std::min((now - return_motion_last_tick_).seconds(), max_delta);
+                        return_motion_elapsed_ += delta;
                         return_motion_last_tick_ = now;
                     }
 
@@ -752,17 +765,17 @@ namespace arm_mazzolini
                         switch (error_type) {
                             case ErrorType::TARGET_EMPTY:
                                 RCLCPP_WARN(this->get_logger(), "Sent empty joint angles, check for error");
-                                break;
+                                return;
                             case ErrorType::TARGET_TOO_FAR:
                             {
                                 RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Get closer, target out of reach.");
                                 double r = std::sqrt(target_position.x()*target_position.x() + target_position.y()*target_position.y());
                                 RCLCPP_INFO_STREAM_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "r = " << r << " l1 + l2 = " << (l1 + l2));
-                                break;
+                                return;
                             }
                             case ErrorType::EXCLUSION_ZONE:
                                 RCLCPP_INFO_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Target unreachable, move around obstacles");
-                                break;
+                                return;
                         }
                     }
                 }
@@ -786,10 +799,33 @@ namespace arm_mazzolini
 
             case ControllerStatus::LASERING:
             {
-                if (!new_pose.isApprox(old_pose, pose_threshold)) {
+                if (!use_sim_time && return_motion_active_) {
+                    // Return spline: arm moves back to initial position while detection
+                    // stays blocked (LASERING keeps image callbacks skipped).
+                    auto now = this->get_clock()->now();
+                    const double max_delta = static_cast<double>(tf_callback_period_ms) / 1000.0;
+                    double delta = std::min((now - return_motion_last_tick_).seconds(), max_delta);
+                    return_motion_elapsed_ += delta;
+                    return_motion_last_tick_ = now;
+
+                    double t = std::min(return_motion_elapsed_ / return_motion_duration, 1.0);
+                    double s = t * t * (3.0 - 2.0 * t);
+                    std::vector<double> interp(initial_joint_values.size());
+                    for (size_t i = 0; i < interp.size(); i++) {
+                        interp[i] = return_motion_start_positions_[i] * (1.0 - s)
+                                  + initial_joint_values[i] * s;
+                    }
+                    send_joint_trajectory(interp);
+
+                    if (t >= 1.0) {
+                        return_motion_active_ = false;
+                        send_joint_trajectory(initial_joint_values);
+                        controller_status = ControllerStatus::NO_TARGET;
+                        RCLCPP_INFO(this->get_logger(), "RETURN SPLINE COMPLETE. Ready for new target.");
+                    }
+                } else if (!new_pose.isApprox(old_pose, pose_threshold)) {
                     controller_status = ControllerStatus::NO_TARGET;
                     RCLCPP_INFO(this->get_logger(), "Mobile robot moved during LASERING");
-                    // TODO: cosa si fa qui? è molto sensibile
                 }
                 break;
             }
@@ -881,6 +917,9 @@ namespace arm_mazzolini
             if (std::abs(vec1[i] - vec2[i]) > joint_tolerance) {
                 return false;
             }
+            else if (!use_sim_time && std::abs(vec1[i] - vec2[i]) > joint_tolerance * 1.5) {
+                return false;
+            }
         }
         return true;
     }
@@ -892,9 +931,7 @@ namespace arm_mazzolini
             return;
         }
         else if (target_feature.isZero()) {
-            // std::vector<double> joint_goal = WeederControllerWithYolo::PBVS_control(target_camera_position);
-            // send_joint_trajectory(joint_goal);
-            // Pass because PBVS doesn't work, there is an error in measuring Z
+            RCLCPP_DEBUG(this->get_logger(), "Target feature is zero, skipping control");
             return;
         }
         else {
@@ -909,66 +946,6 @@ namespace arm_mazzolini
                 send_joint_trajectory(joint_goal);
             }
         }
-    }
-
-    std::vector<double> WeederControllerWithYolo::PBVS_control(Eigen::Vector3d& target)
-    {
-        double dt = static_cast<double>(control_dt) / 1000.0;
-
-        // Errore cartesiano nel frame camera
-        Eigen::Vector3d e_p;
-        if (filtering) {
-            e_p = target - desired_position;
-
-            // Smoothing error
-            e_p_filtered = beta.cwiseProduct(e_p) + (Eigen::Vector3d(1.0, 1.0, 1.0) - beta).cwiseProduct(e_p_filtered);
-            e_p = e_p_filtered;            
-        }
-        else {
-            // Computing error
-             e_p = target - desired_position;
-        }
-
-        // Velocità camera
-        Eigen::Vector3d v_c = - (lambda_PBVS * e_p);
-
-        // Rotazione camera -> EE (costante, da TF)
-        Eigen::Isometry3d camera_to_EE;
-        try {
-            geometry_msgs::msg::TransformStamped camera_pose = tf_buffer->lookupTransform("end_effector", "camera_kinematic", tf2::TimePointZero);
-            camera_to_EE = tf2::transformToEigen(camera_pose);
-        }
-        catch (tf2::TransformException &ex) {
-            RCLCPP_WARN_THROTTLE(this->get_logger(), *(this->get_clock()), message_throttle_ms, "Could not transform camera_kinematic to kinematic_link: %s", ex.what());
-            return {joint_states[0], joint_states[1]}; // return current joint states to avoid sending empty trajectory
-        }
-        Eigen::Matrix3d R_ec = camera_to_EE.rotation();
-
-        // Velocità EE
-        Eigen::Vector3d v_e = R_ec * v_c;
-
-        // Jacobiano SCARA (EE wrt base)
-        Eigen::Matrix3d J = arm_kinematic->computeScaraJacobian(joint_states);
-
-        // Velocità giunti
-        Eigen::Vector3d q_dot = J.inverse() * v_e;
-
-        // Integrazione
-        auto q = Eigen::Vector3d(joint_states[0], joint_states[1], 0.0);
-        Eigen::Vector3d q_next = q + q_dot * dt;
-
-        RCLCPP_DEBUG(this->get_logger(), "======================DEBUG PBVS======================");
-        RCLCPP_DEBUG_STREAM(this->get_logger(), "Target position (m): " << target.transpose());
-        RCLCPP_DEBUG_STREAM(this->get_logger(), "Desired position (m): " << desired_position.transpose());
-        RCLCPP_DEBUG_STREAM(this->get_logger(), "Camera velocity (m/s): " << v_c.transpose());
-        RCLCPP_DEBUG_STREAM(this->get_logger(), "EE velocity (m/s): " << v_e.transpose());
-        RCLCPP_DEBUG_STREAM(this->get_logger(), "Joint velocity (rad/s): " << q_dot.transpose());
-        RCLCPP_DEBUG_STREAM(this->get_logger(), "Current joint angles (rad): " << q.transpose());
-        RCLCPP_DEBUG_STREAM(this->get_logger(), "Next joint angles (rad): " << q_next.transpose());
-        RCLCPP_DEBUG(this->get_logger(), "=====================================================");
-
-
-        return {q_next(0), q_next(1)};
     }
 
     std::vector<double> WeederControllerWithYolo::IBVS_control(Eigen::Vector3d& feature)
@@ -1013,7 +990,18 @@ namespace arm_mazzolini
                     0.0,    -Z,      v,
                     0.0,    0.0,    -1.0;
 
-        Eigen::Vector3d v_c = - (lambda_IBVS * L_pinv * e_s);
+        Eigen::Vector3d v_c;
+        
+        if (variable_gain) {
+            double e_norm = e_s.norm();
+            double k = lambda_prime_0 / std::max(lambda_0 - lambda_inf, 1e-3);
+            double lambda_eff = (lambda_0 - lambda_inf) * std::exp(-k * e_norm) + lambda_inf;
+            v_c = - (lambda_eff * L_pinv * e_s);
+            RCLCPP_DEBUG_STREAM(this->get_logger(), "Variable gain: e_norm=" << e_norm << " lambda_eff=" << lambda_eff);
+        }
+        else {
+            v_c = - (lambda_IBVS * L_pinv * e_s);
+        }
 
         // double mu = 0.02;
         // Eigen::Matrix3d L_damped =
@@ -1041,11 +1029,16 @@ namespace arm_mazzolini
         Eigen::Matrix3d J = arm_kinematic->computeScaraJacobian(joint_states);
 
         // joint velocity
-        // Eigen::Vector3d q_dot = J.inverse() * v_e;
-        // Singularity guard: damped least-squares inversion
-        const double mu = 0.05;
-        Eigen::Matrix3d J_damped = J.transpose() * (J * J.transpose() + mu * mu * Eigen::Matrix3d::Identity()).inverse();
-        Eigen::Vector3d q_dot = J_damped * v_e;
+        Eigen::Vector3d q_dot;
+        if (use_sim_time) {
+            q_dot = J.inverse() * v_e;
+        }
+        else{
+            // Singularity guard: damped least-squares inversion
+            const double mu = 0.05;
+            Eigen::Matrix3d J_damped = J.transpose() * (J * J.transpose() + mu * mu * Eigen::Matrix3d::Identity()).inverse();
+            q_dot = J_damped * v_e;
+        }
 
         // Integrazione
         // Potrei aggiungere un terzo joint state per considerare la focale del laser
@@ -1074,17 +1067,21 @@ namespace arm_mazzolini
         }
         else {
             // Real hardware: longer pause to allow laser to reach full power
-            pause_milliseconds = 3000;
+            pause_milliseconds = 10000;
         }
 
         RCLCPP_INFO(this->get_logger(), "============ ACTIVATING LASER =============");
 
-        laser_timer = rclcpp::create_timer(
+        if(!use_sim_time) {
+            real_laser_pub->publish(std_msgs::msg::Empty());
+        }
+
+        first_laser_timer = rclcpp::create_timer(
             this,
             this->get_clock(),
-            rclcpp::Duration(std::chrono::milliseconds(pause_milliseconds)),
+            rclcpp::Duration(std::chrono::milliseconds(pause_milliseconds*8/10)),
             [this]() {
-                laser_timer->cancel();
+                first_laser_timer->cancel();
 
                 geometry_msgs::msg::PointStamped lasered_position;
                 if (use_sim_time) {
@@ -1096,21 +1093,38 @@ namespace arm_mazzolini
                         lasered_position.point = tf2::toMsg(absolute_position);
                         lasered_position.header.stamp = this->now();
                         lasered_position.header.frame_id = "odom";
-                        laser_pub->publish(lasered_position);
+                        simulated_laser_pub->publish(lasered_position);
                     }
                     catch (tf2::TransformException &ex) {
                         RCLCPP_WARN(this->get_logger(), "Could not transform odom to kinematic_link: %s", ex.what());
                     }
                 }
-                else {
-                    lasered_position.point = tf2::toMsg(target_position);
-                    lasered_position.header.stamp = this->now();
-                    lasered_position.header.frame_id = "map";
-                    laser_pub->publish(lasered_position);
+                else {                    
+                    real_laser_pub->publish(std_msgs::msg::Empty());
                 }
-
-                controller_status = ControllerStatus::NO_TARGET;
             });
+
+            RCLCPP_INFO(this->get_logger(), "TARGET CLEARED. READY FOR A NEW ONE");
+
+            // second timer to avoid detecting the same plant twice
+            second_laser_timer = rclcpp::create_timer(
+                this,
+                this->get_clock(),
+                rclcpp::Duration(std::chrono::milliseconds(pause_milliseconds*2/10)),
+                [this]() {
+                    second_laser_timer->cancel();
+                    if (!use_sim_time) {
+                        // Stay in LASERING so detection remains blocked.
+                        // Run return spline in pose_callback; it will set NO_TARGET when done.
+                        return_motion_elapsed_         = 0.0;
+                        return_motion_last_tick_       = this->get_clock()->now();
+                        return_motion_start_positions_ = joint_states;
+                        return_motion_active_          = true;
+                        RCLCPP_INFO(this->get_logger(), "Laser done. Starting return spline.");
+                    } else {
+                        controller_status = ControllerStatus::NO_TARGET;
+                    }
+                });
     }
 
     WeederControllerWithYolo::~WeederControllerWithYolo()

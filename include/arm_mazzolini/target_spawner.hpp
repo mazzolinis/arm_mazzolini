@@ -58,12 +58,12 @@ class TargetSpawner : public rclcpp::Node
         // Variables
         const int spawn_period = 2; // seconds between laser and new target
         const double min_distance = 0.1;
-        const double max_distance = 0.45;
+        const double max_distance = 0.5;
         const double angle_range = M_PI / 6;
         // adding a new area to spawn target
         const double lato = 0.2;
         // Eigen::Vector3d center = Eigen::Vector3d(-0.08, -0.78, 1.27); 
-        Eigen::Vector3d center = Eigen::Vector3d(0.0, 1.35, 0.33); 
+        Eigen::Vector3d center = Eigen::Vector3d(0.0, 1.3, 0.33); 
         Eigen::Isometry3d world_to_base_link;
         Eigen::Vector3d target_position_world;
         

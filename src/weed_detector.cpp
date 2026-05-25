@@ -111,9 +111,11 @@ bool WeedDetector::PBTargetPosition(
     if (!detect(rgb_msg, depth_msg, centroid, Z))
         return false;
 
+    // RCLCPP_INFO(rclcpp::get_logger("WeedDetector"), "Centroid pixel: (%d, %d), Depth: %.2f m", centroid.x, centroid.y, Z);
     centroid_position.x() = (centroid.x - cx_) * Z / fx_;
     centroid_position.y() = (centroid.y - cy_) * Z / fy_;
     centroid_position.z() = Z;
+    // RCLCPP_INFO(rclcpp::get_logger("WeedDetector"), "Centroid position in camera frame: (%.2f, %.2f, %.2f) m", centroid_position.x(), centroid_position.y(), centroid_position.z());
     return true;
 }
 

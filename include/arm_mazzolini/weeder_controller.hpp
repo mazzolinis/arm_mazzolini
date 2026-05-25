@@ -101,8 +101,9 @@ namespace arm_mazzolini
         int control_dt;
         int trajectory_dt;
 
-        // Thread
-        rclcpp::TimerBase::SharedPtr laser_timer;
+        // Timers for laser activation
+        rclcpp::TimerBase::SharedPtr first_laser_timer;
+        rclcpp::TimerBase::SharedPtr second_laser_timer;
 
         // Control and filter gains
         Eigen::Vector3d target_feature = Eigen::Vector3d::Zero(); // u, v, Z feature of the target in camera frame
@@ -114,9 +115,12 @@ namespace arm_mazzolini
         Eigen::Vector3d e_p_filtered = Eigen::Vector3d::Zero();
         // Eigen::Vector3d alpha; // Not used right now
         Eigen::Vector3d beta;
-        Eigen::DiagonalMatrix<double, 3> lambda_IBVS;
-        Eigen::DiagonalMatrix<double, 3> lambda_PBVS;
-        double control_threshold; 
+        double lambda_IBVS;
+        bool variable_gain;
+        double lambda_0;
+        double lambda_inf;
+        double lambda_prime_0;
+        double control_threshold;
 
         // Messages
         control_msgs::action::FollowJointTrajectory::Goal goal_msg;
@@ -153,7 +157,6 @@ namespace arm_mazzolini
         bool vectors_are_equal(const std::vector<double>& vec1, const std::vector<double>& vec2);
         void activate_laser();
         std::vector<double> IBVS_control(Eigen::Vector3d& feature);
-        std::vector<double> PBVS_control(Eigen::Vector3d& center);
         
         // Callbacks
         void joint_states_callback(const sensor_msgs::msg::JointState::SharedPtr msg);
