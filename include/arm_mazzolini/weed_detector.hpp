@@ -1,5 +1,7 @@
 #pragma once
 
+#include "arm_mazzolini/standard_detector.hpp"
+
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
@@ -29,7 +31,7 @@ struct WeedDetection
     cv::Point centroid;     // pixel centroid of the mask
 };
 
-class WeedDetector
+class WeedDetector : public StandardDetector
 {
 public:
     /**
@@ -47,9 +49,9 @@ public:
     ~WeedDetector() = default;
 
     // ── Camera calibration ─────────────────────────────────────────────────
-    void SetCameraInfo(const sensor_msgs::msg::CameraInfo::ConstSharedPtr &info_msg);
-    std::vector<double> getCameraCenter();
-    std::vector<double> getCameraFocals();
+    void SetCameraInfo(const sensor_msgs::msg::CameraInfo::ConstSharedPtr &info_msg) override;
+    std::vector<double> getCameraCenter() override;
+    std::vector<double> getCameraFocals() override;
 
     // ── Position-Based control (metric 3-D position) ───────────────────────
     /**
@@ -60,13 +62,13 @@ public:
     bool PBTargetPosition(
         const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
         const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
-        Eigen::Vector3d &centroid_position);
+        Eigen::Vector3d &centroid_position) override;
 
     /**
      * Overload: convert an already-computed image-based feature to metric.
      * feature = (x_n, y_n, Z) where x_n = (u-cx)/fx
      */
-    Eigen::Vector3d PBTargetPosition(const Eigen::Vector3d &centroid_feature);
+    Eigen::Vector3d PBTargetPosition(const Eigen::Vector3d &centroid_feature) override;
 
     // ── Image-Based control (normalised coordinates) ───────────────────────
     /**
@@ -76,7 +78,7 @@ public:
     bool IBTargetPosition(
         const sensor_msgs::msg::Image::ConstSharedPtr &rgb_msg,
         const sensor_msgs::msg::Image::ConstSharedPtr &depth_msg,
-        Eigen::Vector3d &centroid_feature);
+        Eigen::Vector3d &centroid_feature) override;
 
     // ── Extended API: access all detections ───────────────────────────────
     /**

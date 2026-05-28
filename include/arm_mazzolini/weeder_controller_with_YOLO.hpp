@@ -93,7 +93,7 @@ namespace arm_mazzolini
         std::vector<double> arm_motion_start_positions_;
         std::vector<double> arm_motion_target_positions_;
         double forward_motion_duration;
-        const double joint_tolerance = 2e-4; // radians
+        const double joint_tolerance = 1e-4; // radians
         std::string real_joints_states_topic = "/omni_controller/joints_state";
         std::string real_joints_command_topic = "/omni_controller/joints_reference";
     

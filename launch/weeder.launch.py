@@ -81,7 +81,10 @@ def generate_launch_description():
     controller_config_file = PathJoinSubstitution(
         [pkg_share, "config", controller],
     )
-    parameters_file = PathJoinSubstitution([pkg_share, "config", "weeder_parameters.yaml"])
+    parameters = PythonExpression([
+        "'weeder_parameters.yaml' if '", use_sim_time, "' == 'true' else 'weeder_parameters_real.yaml'" 
+    ])
+    parameters_file = PathJoinSubstitution([pkg_share, "config", parameters])
     camera_config_file = PathJoinSubstitution([pkg_share, "config", "simulated_D435_parameters.yaml"])
     output_file = PathJoinSubstitution(["/home", "simone", "Scrivania", "YOLO_first_test.csv"])
 

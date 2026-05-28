@@ -1,7 +1,9 @@
 #pragma once
 
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/callback_group.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
+#include "std_msgs/msg/empty.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "sensor_msgs/msg/image.hpp"
 #include "sensor_msgs/msg/camera_info.hpp"
@@ -17,9 +19,13 @@
 #include <tf2_ros/buffer.h>
 
 #include <memory>
+#include <mutex>
+#include <unordered_map>
 
 #include "arm_mazzolini/sphere_detector.hpp"
+#include "arm_mazzolini/weed_detector.hpp"
 #include "arm_mazzolini/arm_kinematic.hpp"
+#include "arm_mazzolini/shared_classes.hpp"
 #include "pi3hat_moteus_int_msgs/msg/joints_command.hpp"
 #include "pi3hat_moteus_int_msgs/msg/joints_states.hpp"
 
@@ -32,6 +38,26 @@ namespace arm_mazzolini
             ~WeederController();
 
         private:
+
+        // ─────────────────────────────────────────────────────────────────
+        // Callback groups for multi-threaded execution
+        // ─────────────────────────────────────────────────────────────────
+        // Two MutuallyExclusive groups served by a MultiThreadedExecutor:
+        //   - control_cb_group_    : control loop, pose timer, joint state
+        //                            updates, action result and laser timers.
+        //   - perception_cb_group_ : image/info callbacks (detection).
+        // Within each group only one callback runs at a time; across groups
+        // they can run in parallel, so a slow detection does not block the
+        // 15 ms pose timer.
+        rclcpp::CallbackGroup::SharedPtr control_cb_group_;
+        rclcpp::CallbackGroup::SharedPtr perception_cb_group_;
+
+        // Mutex protecting state shared between the two groups.
+        // Protects: controller_status, target_feature, target_camera_position,
+        // target_position, joint_states, joint_states_received_.
+        // All other members are accessed only inside a single group and
+        // therefore need no explicit lock.
+        std::mutex state_mutex_;
 
         // Parameters
         bool use_sim_time;
@@ -48,57 +74,69 @@ namespace arm_mazzolini
         int tf_callback_period_ms;
 
         enum class ControllerStatus {
-        NO_TARGET,
-        HAS_TARGET,
-        ARM_MOVING,
-        POSITIONING,
-        LASERING,
+            NO_TARGET,
+            HAS_TARGET,
+            ARM_MOVING,
+            POSITIONING,
+            LASERING,
         };
-
         ControllerStatus controller_status;
+
+        inline static const std::unordered_map<std::string, DetectorType> detector_map = {
+            {"HSV_red",       DetectorType::HSV_red},
+            {"ExG_threshold", DetectorType::ExG_threshold},
+            {"ExG_Otsu",      DetectorType::ExG_Otsu},
+            {"ExGR",          DetectorType::ExGR},
+            {"YOLO",          DetectorType::YOLO}
+        };
+        DetectorType detector_type;
 
         // Image parameters
         bool camera_initialized = false;
         std::vector<Eigen::Vector3d> target_buffer;
         size_t image_buffer_size;
-        int frames_delay;
-        int current_frame_index = 0;
+        int detection_period_ms;
+        rclcpp::Time last_detection_time;
         int roi_size;
         int morph_kernel_size;
         int depth_roi_size;
-        MaskType mask_type;
-    
+        float confidence_threshold;
+        int CUDA_device_id;
+        std::string detector_type_string;
+
         // Mobile robot pose (and threshold)
-        Eigen::Isometry3d old_pose; // pose of mobile robot base relative to map frame
-        Eigen::Isometry3d new_pose; // same but at next step
-        const double pose_threshold = 1e-3;   
-        
+        Eigen::Isometry3d old_pose;
+        Eigen::Isometry3d new_pose;
+        const double pose_threshold = 1e-3;
+
         // Joint parameters
         std::vector<std::string> joint_names = {"joint1", "joint2"};
         std::vector<double> kp_scale;
         std::vector<double> kd_scale;
-        const std::vector<double> initial_joint_values = {-M_PI/4, M_PI/4}; 
+        const std::vector<double> initial_joint_values = {-M_PI/4, M_PI/4};
         std::vector<double> joint_states = initial_joint_values;
         std::vector<double> last_joint_angles;
         bool return_motion_active_ = false;
         double return_motion_elapsed_ = 0.0;
+        rclcpp::Time return_motion_start_time_;
         rclcpp::Time return_motion_last_tick_;
         std::vector<double> return_motion_start_positions_;
-        bool joint_states_received_ = false;          // true dopo il primo messaggio di stato reale
-        double return_motion_duration;         // durata spline di ritorno [s], da YAML (solo !use_sim_time)
+        bool joint_states_received_ = false;
+        double return_motion_duration;
         bool arm_motion_active_ = false;
         rclcpp::Time arm_motion_start_time_;
         std::vector<double> arm_motion_start_positions_;
         std::vector<double> arm_motion_target_positions_;
         double forward_motion_duration;
-        const double joint_tolerance = 2e-4; // radians
+        const double joint_tolerance = 1e-4;
         std::string real_joints_states_topic = "/omni_controller/joints_state";
         std::string real_joints_command_topic = "/omni_controller/joints_reference";
-    
+
         // Timers
         rclcpp::TimerBase::SharedPtr pose_timer;
         rclcpp::TimerBase::SharedPtr control_timer;
         int control_dt;
+        int trajectory_time_ms;
         int trajectory_dt;
 
         // Timers for laser activation
@@ -106,14 +144,13 @@ namespace arm_mazzolini
         rclcpp::TimerBase::SharedPtr second_laser_timer;
 
         // Control and filter gains
-        Eigen::Vector3d target_feature = Eigen::Vector3d::Zero(); // u, v, Z feature of the target in camera frame
-        Eigen::Vector3d target_position = Eigen::Vector3d::Zero();  // x, y, z position of the target in kinematic_link frame
-        Eigen::Vector3d target_camera_position = Eigen::Vector3d::Zero();  // x, y, z position of the target in camera_kinematic frame
-        Eigen::Vector3d desired_feature; // u, v, Z desired feature of the target in camera frame
-        Eigen::Vector3d desired_position; // x, y, z desired position of the target in camera_kinematic frame, usually [0, 0, Z]
+        Eigen::Vector3d target_feature = Eigen::Vector3d::Zero();
+        Eigen::Vector3d target_position = Eigen::Vector3d::Zero();
+        Eigen::Vector3d target_camera_position = Eigen::Vector3d::Zero();
+        Eigen::Vector3d desired_feature;
+        Eigen::Vector3d desired_position;
         Eigen::Vector3d e_s_filtered = Eigen::Vector3d::Zero();
         Eigen::Vector3d e_p_filtered = Eigen::Vector3d::Zero();
-        // Eigen::Vector3d alpha; // Not used right now
         Eigen::Vector3d beta;
         double lambda_IBVS;
         bool variable_gain;
@@ -130,7 +167,8 @@ namespace arm_mazzolini
         rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_state_sub;
         rclcpp_action::Client<control_msgs::action::FollowJointTrajectory>::SharedPtr joints_client;
         rclcpp::Publisher<trajectory_msgs::msg::JointTrajectory>::SharedPtr trajectory_pub;
-        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr laser_pub;
+        rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr simulated_laser_pub;
+        rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr real_laser_pub;
         rclcpp::Publisher<pi3hat_moteus_int_msgs::msg::JointsCommand>::SharedPtr command_publisher_;
         rclcpp::Subscription<pi3hat_moteus_int_msgs::msg::JointsStates>::SharedPtr states_subscription_;
 
@@ -148,16 +186,20 @@ namespace arm_mazzolini
         std::unique_ptr<tf2_ros::Buffer> tf_buffer;
         std::shared_ptr<tf2_ros::TransformListener> tf_listener;
         rclcpp::Time last_warning_time;
-        int trajectory_time_ms;
-        const uint64_t message_throttle_ms = 1000; // for INFO and WARN messages using THROTTLE
+        uint64_t message_throttle_ms = 1000;
 
         // Functions
-        void declare_and_get_parameters();   
+        void declare_and_get_parameters();
         void send_joint_trajectory(const std::vector<double>& joint_angles);
         bool vectors_are_equal(const std::vector<double>& vec1, const std::vector<double>& vec2);
         void activate_laser();
-        std::vector<double> IBVS_control(Eigen::Vector3d& feature);
-        
+
+        // IBVS_control now takes joint_states as a parameter so the caller
+        // can pass a local snapshot taken under state_mutex_, avoiding
+        // unprotected reads of the shared joint_states member.
+        std::vector<double> IBVS_control(Eigen::Vector3d& feature,
+                                          const std::vector<double>& joint_states_snapshot);
+
         // Callbacks
         void joint_states_callback(const sensor_msgs::msg::JointState::SharedPtr msg);
         void pose_timer_callback();
@@ -168,15 +210,14 @@ namespace arm_mazzolini
                             const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg);
         void control_callback();
         void real_image_callback(const sensor_msgs::msg::Image::ConstSharedPtr rgb_msg,
-                    const sensor_msgs::msg::Image::ConstSharedPtr depth_msg);
+                                 const sensor_msgs::msg::Image::ConstSharedPtr depth_msg);
         void real_info_callback(const sensor_msgs::msg::CameraInfo::ConstSharedPtr info_msg);
         void real_states_callback(const pi3hat_moteus_int_msgs::msg::JointsStates::SharedPtr msg);
 
-        // Other packages
-        std::unique_ptr<SphereDetector> sphere_detector;
+        // Detector (Strategy pattern: SphereDetector or WeedDetector)
+        std::unique_ptr<StandardDetector> detector;
+        std::string model_path = "/home/simone/Documenti/Uni/arm_mazzolini/src/arm_mazzolini/models/YOLO_networks/best_2026_05_01.onnx";
         std::unique_ptr<ArmKinematic> arm_kinematic;
-   
     };
 
 } // namespace arm_mazzolini
-

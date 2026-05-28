@@ -2,13 +2,17 @@
 
 namespace arm_mazzolini
 {
-    SphereDetector::SphereDetector(int roi_size, int morph_kernel_size, int depth_roi_size, MaskType mask_type)
+    SphereDetector::SphereDetector(int roi_size, int morph_kernel_size, int depth_roi_size, DetectorType mask_type)
         : roi_size_(roi_size),
           morph_kernel_size_(morph_kernel_size),
           depth_roi_size_(depth_roi_size),
           mask_type_(mask_type)
     {
-        // Do something here?
+        if (mask_type_ == DetectorType::YOLO)
+        {
+            RCLCPP_ERROR(rclcpp::get_logger("SphereDetector"), "YOLO mask type should not be here. Defaulting to ExG_threshold.");
+            mask_type_ = DetectorType::ExG_threshold;
+        }
     }
 
     void SphereDetector::SetCameraInfo(const sensor_msgs::msg::CameraInfo::ConstSharedPtr &info_msg)
@@ -166,7 +170,7 @@ namespace arm_mazzolini
         
         switch (mask_type_)
         {
-            case MaskType::HSV_red:
+            case DetectorType::HSV_red:
             {
                 cv::Mat hsv;
                 cv::cvtColor(rgb, hsv, cv::COLOR_RGB2HSV); // RGB to HSV
@@ -180,7 +184,7 @@ namespace arm_mazzolini
                 break;
             }
 
-            case MaskType::ExG_threshold:
+            case DetectorType::ExG_threshold:
             {
                 cv::Mat r, g, b;
                 RGBDecomposition(rgb, r, g, b);
@@ -191,7 +195,7 @@ namespace arm_mazzolini
                 break;
             }
 
-            case MaskType::ExG_Otsu:
+            case DetectorType::ExG_Otsu:
             {
                 cv::Mat r, g, b;
                 RGBDecomposition(rgb, r, g, b);
@@ -205,7 +209,7 @@ namespace arm_mazzolini
                 break;
             }
 
-            case MaskType::ExGR:
+            case DetectorType::ExGR:
             {
                 cv::Mat r, g, b;
                 RGBDecomposition(rgb, r, g, b);

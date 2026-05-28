@@ -3,38 +3,35 @@ weeder_controller:
     link1_length: 0.190
     link2_length: 0.250
     trajectory_time_ms: 250  # time in milliseconds to execute the trajectory
-    tf_callback_period: 100  # milliseconds between each tf callback
+    tf_callback_period: 150  # milliseconds between each tf callback
     image_buffer_size: 3 # averaging target position of these many images
-    frames_delay: 6 # checks the above amount of images and then idle for these many
     camera_rgb_topic: /simulated_D435/image_rect
     camera_depth_topic: /simulated_D435/depth_image
     camera_info_topic: /simulated_D435/camera_info
-    # camera_rgb_topic: /weeder_robot/real_D455/color/image_raw
-    # camera_depth_topic: /weeder_robot/real_D455/aligned_depth_to_color/image_raw
-    # camera_info_topic: /weeder_robot/real_D455/color/camera_info
     roi_size: 20
     morph_kernel_size: 5
-    depth_roi_size: 40
-    mask_type: ExG_threshold # options: HSV_red, ExG_threshold, ExG_Otsu, ExGR. Default: HSV_red
+    depth_roi_size: 24
+    confidence_threshold: 0.5
+    CUDA_device_id: 0
+    detector_type: YOLO # options: HSV_red, ExG_threshold, ExG_Otsu, ExGR, YOLO. Default: ExG_threshold
     kp_scale: [0.0, 0.0] # proportional gain scale for each joint
     kd_scale: [0.0, 0.0] # derivative gain scale for each joint
-    return_motion_duration: 4.0 # duration of initial spline motion
+    return_motion_duration: 3.0 # duration of initial spline motion
     forward_motion_duration: 2.0 # duration of arm-to-target spline motion [s]
 
     visual_servoing:
       filtering: false
       alpha: [1.0, 1.0, 0.4] # for target_camera_position (1.0 = no filtering), THIS VALUE IS NOT USED RIGHT NOW
       beta: [0.6, 0.6, 0.6] # for error [dx, dy, dz] (1.0 = no filtering)
-      lambda_IBVS: 1.5 # controller gain (it's not a filter option, it's always active)
-      variable_gain: false # if true, use adaptive gain instead of fixed lambda_IBVS
+      lambda_IBVS: 2.0 # controller gain (it's not a filter option, it's always active)
+      variable_gain: true # if true, use adaptive gain instead of fixed lambda_IBVS
       lambda_0: 3.0 # initial gain (at e_norm=0) for variable gain
-      lambda_inf: 0.5 # asymptotic gain (as e_norm->inf) for variable gain
-      lambda_prime_0: 20.0 # derivative of gain at e_norm=0, controls decay rate
+      lambda_inf: 1.0 # asymptotic gain (as e_norm->inf) for variable gain
+      lambda_prime_0: 15.0 # derivative of gain at e_norm=0, controls decay rate
       controller_period_ms: 50 # (called dt in the node) remeber 0.0 < lambda*dt < 2.0 for stability
       smoothing: 1.2 # 1.0 - 1.5 = trajectories are slower than control, if < 1.0 faster trajectories, possibile jerk
       control_threshold: 0.02 # stop condition for visual servoing
-      desired_feature: [0.005, 0.015, 0.6] # u, v, Z: first two are in percentage of screen, last one in meters. [0, 0, Z] means center of the image
-      # desired_feature: [0.035, 0.025, 0.8] # u, v, Z: first two are in percentage of screen, last one in meters. [0, 0, Z] means center of the image
+      desired_feature: [0.0, 0.025, 0.8] # u, v, Z: first two are in percentage of screen, last one in meters. [0, 0, Z] means center of the image
 
 
 weeder_controller_with_YOLO:
@@ -42,15 +39,12 @@ weeder_controller_with_YOLO:
     link1_length: 0.190
     link2_length: 0.250
     trajectory_time_ms: 250  # time in milliseconds to execute the trajectory
-    tf_callback_period: 15  # milliseconds between each tf callback
+    tf_callback_period: 150  # milliseconds between each tf callback
     image_buffer_size: 3 # averaging target position of these many images
     detection_period_ms: 100 # elaborate images every this many milliseconds, set 0 to match camera frame rate
-    # camera_rgb_topic: /simulated_D435/image_rect
-    # camera_depth_topic: /simulated_D435/depth_image
-    # camera_info_topic: /simulated_D435/camera_info
-    camera_rgb_topic: /weeder_robot/real_D455/color/image_raw
-    camera_depth_topic: /weeder_robot/real_D455/aligned_depth_to_color/image_raw
-    camera_info_topic: /weeder_robot/real_D455/color/camera_info
+    camera_rgb_topic: /simulated_D435/image_rect
+    camera_depth_topic: /simulated_D435/depth_image
+    camera_info_topic: /simulated_D435/camera_info
     confidence_threshold: 0.5
     depth_roi_size: 24
     CUDA_device_id: 0
@@ -70,10 +64,8 @@ weeder_controller_with_YOLO:
       lambda_prime_0: 20.0 # derivative of gain at e_norm=0, controls decay rate
       controller_period_ms: 50 # (called dt in the node) remeber 0.0 < lambda*dt < 2.0 for stability
       smoothing: 1.2 # 1.0 - 1.5 = trajectories are slower than control, if < 1.0 faster trajectories, possibile jerk
-      control_threshold: 0.1 # stop condition for visual servoing
-      # control_threshold: 0.02 
-      desired_feature: [0.005, 0.015, 0.6] # u, v, Z: first two are in percentage of screen, last one in meters. [0, 0, Z] means center of the image
-      # desired_feature: [0.035, 0.025, 0.8] # u, v, Z: first two are in percentage of screen, last one in meters. [0, 0, Z] means center of the image
+      control_threshold: 0.02 # stop condition for visual servoing
+      desired_feature: [0.035, 0.025, 0.8] # u, v, Z: first two are in percentage of screen, last one in meters. [0, 0, Z] means center of the image
 
 gazebo_target_visualizer:
   ros__parameters:

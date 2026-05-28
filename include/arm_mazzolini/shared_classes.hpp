@@ -18,4 +18,13 @@ namespace arm_mazzolini
         ExG_Otsu,
         ExGR,
     };
+
+    enum class DetectorType
+    {
+        HSV_red,
+        ExG_threshold,
+        ExG_Otsu,
+        ExGR,
+        YOLO
+    };
 }

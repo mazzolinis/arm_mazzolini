@@ -8,10 +8,6 @@
 namespace arm_mazzolini
 {
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constructor
-// ─────────────────────────────────────────────────────────────────────────────
-
 WeedDetector::WeedDetector(
     const std::string &model_path,
     float conf_threshold,
